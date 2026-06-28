@@ -1,9 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
-use App\Models\members;
+use App\Models\Member;
 use App\Models\packages;
 use App\Models\Trainer_Schedules;
 use App\Models\schedule_members;
@@ -11,9 +11,17 @@ use Illuminate\Http\Request;
 
 class MembersController extends Controller
 {
-   public function registerSchedule(Request $request){
-        // Kiểm tra hội viên
-        $member = members::find($request->member_id);
+   public function registerSchedule(Request $request)
+    {
+        // $user   = Auth::guard('sanctum')->user();
+        //     if ($user == null) {
+        //         return response()->json([
+        //             'message' => 'Bạn chưa đăng nhập',
+        //             'status' => false
+        //         ]);
+        //     }
+         // Kiểm tra hội viên
+        $member = Member::find($request->member_id);
         if (!$member) {
             return response()->json([
                 'status' => false,
@@ -117,5 +125,33 @@ class MembersController extends Controller
             'message' => 'Đăng ký lịch tập thành công.',
             'data' => $register
         ], 201);
+       
     }
+
+
+    public function login(Request $request)
+    {
+        $check = Auth::guard('member')->attempt([
+            'email'     => $request->email,
+            'password'  => $request->password
+        ]);
+        if ($check) {
+            $user   = Auth::guard('member')->user();
+            $token  = $user->createToken('Token_Member')->plainTextToken;
+            return response()->json([
+                'message'   => 'Đăng nhập thành công',
+                'status'    => true,
+                'token'     => $token,
+                'user'      => $user
+            ]);
+        } else {
+            return response()->json([
+                'message'   => 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.',
+                'status'    => false
+            ]);
+        }
+    }
+    
+
+
 }
