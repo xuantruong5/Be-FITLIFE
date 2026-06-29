@@ -151,6 +151,41 @@ class MembersController extends Controller
             ]);
         }
     }
+    public function loginGoogle(Request $request)
+    {
+        $data = $request->all();
+
+        $member= Member::where('email', $data['email'])->first();
+        if($member){
+
+            $token  = $member->createToken('Token_Member')->plainTextToken;
+
+            return  response()->json([
+                'message'   => 'Đăng nhập Google thành công',
+                'status'    => true,
+                'token'     => $token,
+                'member'      => $member
+            ]);
+        }
+
+        $member = Member::create([
+            'ho_ten'    => $data['name'],
+            'email'     => $data['email'],
+            'password'  => bcrypt('123456'),
+            'avatar'    => $data['photo']
+        ]);
+
+        $token = $member->createToken('Token_Member')->plainTextToken;
+
+        return response()->json([
+            'message'   => 'Đăng nhập Google thành công',
+            'status'    => true,
+            'token'     => $token,
+            'member'      => $member
+        ]);
+
+
+    }
     
 
 

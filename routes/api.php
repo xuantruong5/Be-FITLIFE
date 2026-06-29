@@ -9,6 +9,7 @@ use App\Http\Controllers\AdminController;
 
 
 Route::post('/login', [MembersController::class, 'login']);
+Route::post('/login-google', [MembersController::class, 'loginGoogle']);
 
 // Member
 Route::group(['prefix' => 'member','middleware' => 'memberMiddleware'], function () {
