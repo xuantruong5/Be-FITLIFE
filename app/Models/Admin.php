@@ -8,40 +8,31 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class Trainer extends Authenticatable
+class Admin extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens;
-    protected $table = 'trainers';
+    use Notifiable, HasFactory, HasApiTokens;
+
+    protected $table = 'admins';
+    public $timestamps = false;
 
     protected $fillable = [
         'name',
+        'phone',
         'email',
         'password',
-        'phone',
-        'date_of_birth',
-        'gender',
-        'avatar',
-        'experience',
-        'address',
-        'is_active',
-        'is_block',
-        'hash_reset',
-        'hash_active',
         'status',
-        'id_branch',
+        'avatar',
+        'date_of_birth',
+        'bio',
+        'last_login_at',
     ];
 
     protected $hidden = [
         'password',
-        'hash_reset',
-        'hash_active',
     ];
-    const ACTIVE    = 1;
-    const BLOCKED   = 0;
 
     public function getAuthPassword()
     {
         return $this->password;
     }
-
 }
