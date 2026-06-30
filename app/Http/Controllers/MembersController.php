@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Requests\Member\RegisterMemberRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
@@ -8,10 +9,34 @@ use App\Models\packages;
 use App\Models\Trainer_Schedules;
 use App\Models\schedule_members;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MasterMail;
 
 class MembersController extends Controller
 {
-   public function registerSchedule(Request $request)
+    public function register(RegisterMemberRequest $request)
+    {
+        $data = $request->all();
+        $member = Member::create([
+            'name'          => $data['name'],
+            'email'         => $data['email'],
+            'phone'         => $data['phone'],
+            'password'      => bcrypt($data['password']),
+        ]);
+        Mail::to($data['email'])->send(new MasterMail($member));
+
+        return response()->json([
+            'message'   => 'Đăng ký thành công',
+            'status'    => true
+        ]);
+    }
+
+
+
+
+
+    public function registerSchedule(Request $request)
     {
         // $user   = Auth::guard('sanctum')->user();
         //     if ($user == null) {
@@ -169,7 +194,7 @@ class MembersController extends Controller
         }
 
         $member = Member::create([
-            'ho_ten'    => $data['name'],
+            'name'    => $data['name'],
             'email'     => $data['email'],
             'password'  => bcrypt('123456'),
             'avatar'    => $data['photo']
@@ -186,7 +211,43 @@ class MembersController extends Controller
 
 
     }
-    
 
+    public function logoutMember(Request $request)
+    {
+         $user = Auth::guard('sanctum')->user();
+        if ($user && $user->currentAccessToken()) {
+            DB::table('personal_access_tokens')
+                ->where('id', $user->currentAccessToken()->id)
+                ->delete();
+            return response()->json([
+                'status'  => true,
+                'message' => "Đăng xuất thành công",
+            ]);
+        } else {
+            return response()->json([
+                'status'  => false,
+                'message' => "Có lỗi xảy ra",
+            ]);
+        }
+    }
+    public function logoutAllMember()
+    {
+        $user = Auth::guard('sanctum')->user();
+        if ($user) {
+            $ds_token = $user->tokens;
+            foreach ($ds_token as $token) {
+                $token->delete();
+            }
+            return response()->json([
+                'status'  => 1,
+                'message' => "Đăng xuất thành công",
+            ]);
+        } else {
+            return response()->json([
+                'status'  => 0,
+                'message' => "Có lỗi xảy ra",
+            ]);
+        }
+    }
 
 }
