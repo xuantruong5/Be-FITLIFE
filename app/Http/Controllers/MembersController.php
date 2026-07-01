@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Http\Requests\Member\RegisterMemberRequest;
+use App\Http\Requests\Member\MemberUpdateProfileRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
@@ -248,6 +249,34 @@ class MembersController extends Controller
                 'message' => "Có lỗi xảy ra",
             ]);
         }
+    }
+    public function getMember(Request $request)
+    {
+        $member = Member::all();
+        return response()->json([
+            'message' => 'Lấy dữ liệu Member thành công',
+            'status' => true,
+            'data' => $member,
+        ]);
+    }
+
+    public function changProfile(MemberUpdateProfileRequest $request)
+    {
+        $member = Auth::guard('sanctum')->user();
+        $member->update([
+            'name'          => $request->name,
+            'phone'         => $request->phone,
+            'date_of_birth' => $request->date_of_birth,
+            'gender'        => $request->gender,
+            'address'       => $request->address,
+        ]);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Đã cập nhật thông tin thành công.',
+            'data' => $member
+        ]);
+
     }
 
 }

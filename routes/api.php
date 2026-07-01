@@ -17,6 +17,9 @@ Route::group(['prefix' => 'member','middleware' => 'memberMiddleware'], function
     Route::post('/register-schedule', [MembersController::class, 'registerSchedule']);
     Route::post('logout', [MembersController::class, 'logoutMember']);
     Route::post('logout-all', [MembersController::class, 'logoutAllMember']);
+    Route::get('/members', [MembersController::class, 'getMember']);
+    Route::post('/change-profile', [MembersController::class, 'changProfile']);
+
     
 });
 
