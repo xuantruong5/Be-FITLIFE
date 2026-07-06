@@ -11,7 +11,11 @@ use Laravel\Sanctum\HasApiTokens;
 class Trainer extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
+
     protected $table = 'trainers';
+
+    const ACTIVE    = 1;
+    const BLOCKED   = 0;
 
     protected $fillable = [
         'name',
@@ -36,12 +40,35 @@ class Trainer extends Authenticatable
         'hash_reset',
         'hash_active',
     ];
-    const ACTIVE    = 1;
-    const BLOCKED   = 0;
 
     public function getAuthPassword()
     {
         return $this->password;
     }
 
+    // Relations
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'id_branch');
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(TrainerSchedule::class, 'id_trainer');
+    }
+
+    public function salaries()
+    {
+        return $this->hasMany(TrainerSalary::class, 'id_trainer');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(TrainerNote::class, 'id_trainer');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class, 'id_trainer');
+    }
 }

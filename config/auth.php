@@ -78,13 +78,13 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
-         'members' => [
+        'members' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\Member::class),
+            'model' => App\Models\Member::class,
         ],
-          'trainers' => [
+        'trainers' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\Trainer::class),
+            'model' => App\Models\Trainer::class,
         ],
          'admins' => [
             'driver' => 'eloquent',
