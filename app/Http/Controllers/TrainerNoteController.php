@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TrainerNote\StoreTrainerNoteRequest;
+use App\Http\Requests\TrainerNote\UpdateTrainerNoteRequest;
 use App\Models\TrainerNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TrainerNoteController extends Controller
 {
-
     public function index(Request $request)
     {
         $trainer = Auth::guard('sanctum')->user();
@@ -48,23 +49,9 @@ class TrainerNoteController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTrainerNoteRequest $request)
     {
         $trainer = Auth::guard('sanctum')->user();
-
-        $request->validate([
-            'title'       => 'required|string|max:255',
-            'id_member'   => 'required|exists:members,id',
-            'id_schedule' => 'required|exists:trainer__schedules,id',
-            'type'        => 'nullable|string|max:100',
-            'priority'    => 'nullable|in:low,normal,high,urgent',
-            'content'     => 'required|string',
-            'weight'      => 'nullable|numeric',
-            'body_fat'    => 'nullable|numeric',
-            'muscle'      => 'nullable|numeric',
-            'calories'    => 'nullable|integer',
-            'status'      => 'nullable|string',
-        ]);
 
         $note = TrainerNote::create(array_merge(
             $request->only('title', 'type', 'priority', 'content', 'weight', 'body_fat', 'muscle', 'calories', 'status', 'id_member', 'id_schedule'),
@@ -84,7 +71,10 @@ class TrainerNoteController extends Controller
         $note = TrainerNote::with(['trainer', 'member', 'schedule'])->find($id);
 
         if (!$note) {
-            return response()->json(['status' => false, 'message' => 'Ghi chú không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Ghi chú không tồn tại.',
+            ], 404);
         }
 
         return response()->json([
@@ -94,7 +84,7 @@ class TrainerNoteController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(UpdateTrainerNoteRequest $request)
     {
         $id      = $request->route('id');
         $trainer = Auth::guard('sanctum')->user();
@@ -106,18 +96,6 @@ class TrainerNoteController extends Controller
                 'message' => 'Ghi chú không tồn tại hoặc bạn không có quyền.',
             ], 404);
         }
-
-        $request->validate([
-            'title'    => 'sometimes|required|string|max:255',
-            'type'     => 'nullable|string|max:100',
-            'priority' => 'nullable|in:low,normal,high,urgent',
-            'content'  => 'sometimes|required|string',
-            'weight'   => 'nullable|numeric',
-            'body_fat' => 'nullable|numeric',
-            'muscle'   => 'nullable|numeric',
-            'calories' => 'nullable|integer',
-            'status'   => 'nullable|string',
-        ]);
 
         $note->update($request->only('title', 'type', 'priority', 'content', 'weight', 'body_fat', 'muscle', 'calories', 'status'));
 

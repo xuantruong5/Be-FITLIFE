@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TrainerSchedule\RejectTrainerScheduleRequest;
+use App\Http\Requests\TrainerSchedule\StoreTrainerScheduleRequest;
+use App\Http\Requests\TrainerSchedule\UpdateTrainerScheduleRequest;
 use App\Models\TrainerSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TrainerScheduleController extends Controller
 {
-    /**
-     * GET /api/trainer/schedules
-     * HLV xem lịch của mình
-     */
     public function index(Request $request)
     {
         $trainer   = Auth::guard('sanctum')->user();
@@ -27,10 +26,6 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/admin/schedules
-     * Admin xem tất cả lịch
-     */
     public function indexAdmin(Request $request)
     {
         $schedules = TrainerSchedule::with(['trainer', 'branch'])
@@ -44,24 +39,9 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/trainer/schedules
-     * HLV tạo lịch mới (chờ admin duyệt)
-     */
-    public function store(Request $request)
+    public function store(StoreTrainerScheduleRequest $request)
     {
         $trainer = Auth::guard('sanctum')->user();
-
-        $request->validate([
-            'title'       => 'required|string|max:255',
-            'date'        => 'required|date',
-            'start_time'  => 'required',
-            'end_time'    => 'required|after:start_time',
-            'room'        => 'required|string|max:100',
-            'max_members' => 'nullable|integer|min:1',
-            'id_branch'   => 'required|exists:branches,id',
-            'note'        => 'nullable|string',
-        ]);
 
         $schedule = TrainerSchedule::create([
             'title'           => $request->title,
@@ -84,10 +64,6 @@ class TrainerScheduleController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /api/trainer/schedules/{id}
-     * Xem chi tiết lịch tập
-     */
     public function show(Request $request)
     {
         $id       = $request->route('id');
@@ -107,11 +83,7 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * PUT /api/trainer/schedules/{id}
-     * HLV cập nhật lịch (chỉ khi chưa duyệt)
-     */
-    public function update(Request $request)
+    public function update(UpdateTrainerScheduleRequest $request)
     {
         $id      = $request->route('id');
         $trainer = Auth::guard('sanctum')->user();
@@ -132,16 +104,6 @@ class TrainerScheduleController extends Controller
             ], 400);
         }
 
-        $request->validate([
-            'title'       => 'sometimes|required|string|max:255',
-            'date'        => 'sometimes|required|date',
-            'start_time'  => 'sometimes|required',
-            'end_time'    => 'sometimes|required',
-            'room'        => 'sometimes|required|string|max:100',
-            'max_members' => 'nullable|integer|min:1',
-            'note'        => 'nullable|string',
-        ]);
-
         $schedule->update($request->only('title', 'date', 'start_time', 'end_time', 'room', 'max_members', 'note'));
         $schedule->approval_status = TrainerSchedule::CHO_DUYET;
         $schedule->save();
@@ -153,17 +115,16 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/schedules/{id}/approve
-     * Admin duyệt lịch
-     */
     public function approve(Request $request)
     {
         $id       = $request->route('id');
         $schedule = TrainerSchedule::find($id);
 
         if (!$schedule) {
-            return response()->json(['status' => false, 'message' => 'Lịch không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Lịch không tồn tại.',
+            ], 404);
         }
 
         $schedule->update([
@@ -178,19 +139,16 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/schedules/{id}/reject
-     * Admin từ chối lịch
-     */
-    public function reject(Request $request)
+    public function reject(RejectTrainerScheduleRequest $request)
     {
-        $request->validate(['admin_note' => 'required|string']);
-
         $id       = $request->route('id');
         $schedule = TrainerSchedule::find($id);
 
         if (!$schedule) {
-            return response()->json(['status' => false, 'message' => 'Lịch không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Lịch không tồn tại.',
+            ], 404);
         }
 
         $schedule->update([
@@ -205,10 +163,6 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/trainer/schedules/{id}
-     * HLV hủy lịch
-     */
     public function destroy(Request $request)
     {
         $id      = $request->route('id');

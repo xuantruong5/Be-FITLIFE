@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TrainerSalary\StoreTrainerSalaryRequest;
+use App\Http\Requests\TrainerSalary\UpdateTrainerSalaryRequest;
 use App\Models\TrainerSalary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TrainerSalaryController extends Controller
 {
-    /**
-     * GET /api/admin/salaries
-     * Admin xem tất cả bảng lương
-     */
     public function index(Request $request)
     {
         $query = TrainerSalary::with('trainer');
@@ -35,10 +33,6 @@ class TrainerSalaryController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/trainer/my-salary
-     * HLV xem lịch sử lương của mình
-     */
     public function mySalary(Request $request)
     {
         $trainer  = Auth::guard('sanctum')->user();
@@ -54,22 +48,8 @@ class TrainerSalaryController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/salaries
-     * Admin tạo bảng lương tháng cho HLV
-     */
-    public function store(Request $request)
+    public function store(StoreTrainerSalaryRequest $request)
     {
-        $request->validate([
-            'id_trainer'  => 'required|exists:trainers,id',
-            'month'       => 'required|integer|min:1|max:12',
-            'year'        => 'required|integer|min:2020',
-            'base_salary' => 'required|numeric|min:0',
-            'bonus'       => 'nullable|numeric|min:0',
-            'deduction'   => 'nullable|numeric|min:0',
-            'note'        => 'nullable|string',
-        ]);
-
         $exists = TrainerSalary::where('id_trainer', $request->id_trainer)
             ->where('month', $request->month)
             ->where('year', $request->year)
@@ -106,17 +86,16 @@ class TrainerSalaryController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /api/admin/salaries/{id}
-     * Xem chi tiết bảng lương
-     */
     public function show(Request $request)
     {
         $id     = $request->route('id');
         $salary = TrainerSalary::with('trainer')->find($id);
 
         if (!$salary) {
-            return response()->json(['status' => false, 'message' => 'Bảng lương không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Bảng lương không tồn tại.',
+            ], 404);
         }
 
         return response()->json([
@@ -126,17 +105,16 @@ class TrainerSalaryController extends Controller
         ]);
     }
 
-    /**
-     * PUT /api/admin/salaries/{id}
-     * Admin cập nhật bảng lương
-     */
-    public function update(Request $request)
+    public function update(UpdateTrainerSalaryRequest $request)
     {
         $id     = $request->route('id');
         $salary = TrainerSalary::find($id);
 
         if (!$salary) {
-            return response()->json(['status' => false, 'message' => 'Bảng lương không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Bảng lương không tồn tại.',
+            ], 404);
         }
 
         if ($salary->status == TrainerSalary::PAID) {
@@ -145,13 +123,6 @@ class TrainerSalaryController extends Controller
                 'message' => 'Bảng lương đã thanh toán, không thể chỉnh sửa.',
             ], 400);
         }
-
-        $request->validate([
-            'base_salary' => 'sometimes|required|numeric|min:0',
-            'bonus'       => 'nullable|numeric|min:0',
-            'deduction'   => 'nullable|numeric|min:0',
-            'note'        => 'nullable|string',
-        ]);
 
         $base      = $request->base_salary ?? $salary->base_salary;
         $bonus     = $request->has('bonus')     ? $request->bonus     : $salary->bonus;
@@ -174,21 +145,23 @@ class TrainerSalaryController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/salaries/{id}/pay
-     * Admin xác nhận đã thanh toán lương
-     */
     public function pay(Request $request)
     {
         $id     = $request->route('id');
         $salary = TrainerSalary::find($id);
 
         if (!$salary) {
-            return response()->json(['status' => false, 'message' => 'Bảng lương không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Bảng lương không tồn tại.',
+            ], 404);
         }
 
         if ($salary->status == TrainerSalary::PAID) {
-            return response()->json(['status' => false, 'message' => 'Lương đã được thanh toán trước đó.'], 400);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Lương đã được thanh toán trước đó.',
+            ], 400);
         }
 
         $salary->update([

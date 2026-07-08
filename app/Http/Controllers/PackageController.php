@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Package\StorePackageRequest;
+use App\Http\Requests\Package\UpdatePackageRequest;
 use App\Models\Package;
 use Illuminate\Http\Request;
 
 class PackageController extends Controller
 {
-    /**
-     * GET /api/packages
-     */
     public function index(Request $request)
     {
         $packages = Package::where('status', Package::HOAT_DONG)->get();
@@ -32,18 +31,8 @@ class PackageController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StorePackageRequest $request)
     {
-        $request->validate([
-            'name'          => 'required|string|max:255',
-            'slug'          => 'required|string|unique:packages,slug',
-            'price'         => 'required|integer|min:0',
-            'duration_days' => 'required|integer|min:1',
-            'description'   => 'nullable|string',
-            'status'        => 'nullable|in:0,1',
-            'is_popular'    => 'nullable|boolean',
-        ]);
-
         $package = Package::create($request->only(
             'name', 'slug', 'price', 'duration_days', 'description', 'status', 'is_popular'
         ));
@@ -74,7 +63,7 @@ class PackageController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(UpdatePackageRequest $request)
     {
         $id      = $request->route('id');
         $package = Package::find($id);
@@ -85,16 +74,6 @@ class PackageController extends Controller
                 'message' => 'Gói tập không tồn tại.',
             ], 404);
         }
-
-        $request->validate([
-            'name'          => 'sometimes|required|string|max:255',
-            'slug'          => 'sometimes|required|string|unique:packages,slug,' . $id,
-            'price'         => 'sometimes|required|integer|min:0',
-            'duration_days' => 'sometimes|required|integer|min:1',
-            'description'   => 'nullable|string',
-            'status'        => 'nullable|in:0,1',
-            'is_popular'    => 'nullable|boolean',
-        ]);
 
         $package->update($request->only(
             'name', 'slug', 'price', 'duration_days', 'description', 'status', 'is_popular'
@@ -107,9 +86,6 @@ class PackageController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/admin/packages/{id}
-     */
     public function destroy(Request $request)
     {
         $id      = $request->route('id');

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Branch\StoreBranchRequest;
+use App\Http\Requests\Branch\UpdateBranchRequest;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
-    /**
-     * GET /api/admin/branches
-     */
     public function index(Request $request)
     {
         $branches = Branch::withCount('trainers')->get();
@@ -21,17 +20,8 @@ class BranchController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/branches
-     */
-    public function store(Request $request)
+    public function store(StoreBranchRequest $request)
     {
-        $request->validate([
-            'name'    => 'required|string|max:255',
-            'address' => 'required|string|max:500',
-            'phone'   => 'nullable|string|max:20',
-        ]);
-
         $branch = Branch::create($request->only('name', 'address', 'phone'));
 
         return response()->json([
@@ -41,9 +31,6 @@ class BranchController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /api/admin/branches/{id}
-     */
     public function show(Request $request)
     {
         $id     = $request->route('id');
@@ -63,10 +50,7 @@ class BranchController extends Controller
         ]);
     }
 
-    /**
-     * PUT /api/admin/branches/{id}
-     */
-    public function update(Request $request)
+    public function update(UpdateBranchRequest $request)
     {
         $id     = $request->route('id');
         $branch = Branch::find($id);
@@ -78,12 +62,6 @@ class BranchController extends Controller
             ], 404);
         }
 
-        $request->validate([
-            'name'    => 'sometimes|required|string|max:255',
-            'address' => 'sometimes|required|string|max:500',
-            'phone'   => 'nullable|string|max:20',
-        ]);
-
         $branch->update($request->only('name', 'address', 'phone'));
 
         return response()->json([
@@ -93,9 +71,6 @@ class BranchController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/admin/branches/{id}
-     */
     public function destroy(Request $request)
     {
         $id     = $request->route('id');
