@@ -7,6 +7,7 @@ use App\Http\Requests\TrainerNote\UpdateTrainerNoteRequest;
 use App\Models\TrainerNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class TrainerNoteController extends Controller
 {
@@ -126,4 +127,51 @@ class TrainerNoteController extends Controller
             'message' => 'Xóa ghi chú thành công.',
         ]);
     }
+
+
+
+
+
+
+
+
+
+
+    
+
+    public function myTrainerNote()
+    {
+        $member = Auth::guard('sanctum')->user();
+
+        $data = TrainerNote::join('trainers', 'trainer_notes.id_trainer', '=', 'trainers.id')
+            ->where('trainer_notes.id_member', $member->id)
+            ->select(
+                'trainer_notes.id',
+                'trainer_notes.title',
+                'trainer_notes.category',
+                'trainer_notes.note',
+                'trainers.name as trainer_name',
+                // 'trainers.avtar', tai vi dang null
+                DB::raw("DATE_FORMAT(trainer_notes.created_at, '%d/%m/%Y') as created_date"),
+                DB::raw("
+                    CASE trainer_notes.category
+                        WHEN 'Kỹ thuật' THEN '#4FC3F7'
+                        WHEN 'Dinh dưỡng' THEN '#FFA34D'
+                        WHEN 'Phục hồi' THEN '#4CD964'
+                        WHEN 'Mục tiêu' THEN '#56D97C'
+                        ELSE '#999999'
+                    END AS color
+                ")
+            )
+            ->orderBy('trainer_notes.created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy danh sách ghi chú thành công.',
+            'data' => $data,
+        ], 200);
+    }
+
+
 }

@@ -6,6 +6,7 @@ use App\Http\Requests\Member\MemberUpdateProfileRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
+use App\Models\MemberPackage;
 use App\Models\packages;
 use App\Models\Trainer_Schedules;
 use App\Models\schedule_members;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MasterMail;
+
 
 class MembersController extends Controller
 {
@@ -278,5 +280,35 @@ class MembersController extends Controller
         ]);
 
     }
+    public function myPackage()
+    {
+        $member = Auth::guard('sanctum')->user();
+        $data = MemberPackage::join('packages', 'member_packages.id_package', '=', 'packages.id')
+        ->where('member_packages.id_member', $member->id)
+        ->select(
+            'member_packages.*',
+            'packages.name as package_name',
+            'packages.slug',
+            'packages.duration_days',
+            DB::raw("
+                CASE member_packages.status
+                    WHEN 0 THEN 'Hết hạn'
+                    WHEN 1 THEN 'Đang hoạt động'
+                    WHEN 2 THEN 'Chưa kích hoạt'
+                    WHEN 3 THEN 'Đã hủy'
+                END AS status_text
+            ")
+        )
+        ->get();
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy danh sách gói tập thành công.',
+            'data' => $data,
+        ], 200);
+    }
+    
+
+
+   
 
 }

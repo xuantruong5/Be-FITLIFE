@@ -58,6 +58,17 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
     // Ghi chú sức khỏe từ HLV
     Route::get('/my-notes',       [TrainerNoteController::class, 'myNotes']);
+
+    // xem gói hiện tại 
+    Route::get('/my-package',       [MembersController::class, 'myPackage']);
+
+    // xem ghi trú từ hlv 
+    Route::get('/my-trainer-note',  [TrainerNoteController::class, 'myTrainerNote']);
+
+    Route::get('/my-schedule',  [ScheduleMemberController::class, 'mySchedule']);
+
+    Route::get('/my-schedule/{id}', [ScheduleMemberController::class, 'scheduleDetail']);
+
 });
 
 // ============================================================
