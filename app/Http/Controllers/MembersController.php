@@ -7,13 +7,16 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\MemberPackage;
-use App\Models\packages;
+use App\Models\Package;
+use App\Models\Trainer;
+use App\Models\TrainerSchedule;
 use App\Models\Trainer_Schedules;
 use App\Models\schedule_members;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MasterMail;
+
 
 
 class MembersController extends Controller
@@ -306,9 +309,162 @@ class MembersController extends Controller
             'data' => $data,
         ], 200);
     }
+
+    public function getTrainer()
+    {
+        $data = Trainer::join('trainer__schedules', 'trainers.id', '=', 'trainer__schedules.id_trainer')
+                        ->where('trainer__schedules.approval_status', TrainerSchedule::DA_DUYET)
+                        ->select(  'trainers.id',  'trainers.name',  'trainers.avatar',
+                                    DB::raw("DATE_FORMAT(trainers.date_of_birth, '%d/%m/%Y') as date_of_birth"),
+                                    DB::raw("DATE_FORMAT(trainer__schedules.date, '%d/%m/%Y') as date"),
+                                    'trainers.address', 'trainers.specialization', 'trainers.experience', 'trainer__schedules.title as schedule',
+                                    DB::raw("
+                                        CONCAT(
+                                            TIME_FORMAT(trainer__schedules.start_time, '%H:%i'),
+                                            ' - ',
+                                            TIME_FORMAT(trainer__schedules.end_time, '%H:%i')
+                                        ) as training_time
+                                    "),
+                                    'trainer__schedules.current_members as total_students',
+                                    'trainer__schedules.note',
+                                    DB::raw("4.8 as rating"),
+                                    DB::raw("
+                                        CASE DAYOFWEEK(trainer__schedules.date)
+                                            WHEN 2 THEN 'T2'
+                                            WHEN 3 THEN 'T3'
+                                            WHEN 4 THEN 'T4'
+                                            WHEN 5 THEN 'T5'
+                                            WHEN 6 THEN 'T6'
+                                            WHEN 7 THEN 'T7'
+                                            WHEN 1 THEN 'CN'
+                                        END as active_day
+                                    ")
+                                )
+        ->get();
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy thông tin huấn luyện viên thành công.',
+            'data' => $data,
+        ], 200);
+    }
+
+    public function getTrainerByPackage($id_package)
+    {
+        $data = Trainer::join('package_trainers', 'trainers.id','=', 'package_trainers.id_trainer')
+                ->join('trainer__schedules','trainers.id','=', 'trainer__schedules.id_trainer' )
+                ->where('package_trainers.id_package', $id_package)
+                ->where( 'trainer__schedules.approval_status', TrainerSchedule::DA_DUYET)
+                ->select( 'trainers.id', 'trainers.name','trainers.avatar',
+
+                    DB::raw(" DATE_FORMAT( trainers.date_of_birth, '%d/%m/%Y' ) as date_of_birth"),
+
+                    DB::raw(" DATE_FORMAT( trainer__schedules.date, '%d/%m/%Y' ) as date "),
+                    'trainers.address',
+                    'trainers.specialization',
+                    'trainers.experience',
+                    'trainer__schedules.title as schedule',
+                    DB::raw("CONCAT( TIME_FORMAT( trainer__schedules.start_time, '%H:%i' ), ' - ', TIME_FORMAT( trainer__schedules.end_time,'%H:%i' ) ) as training_time "),
+
+                    'trainer__schedules.current_members as total_students',
+                    'trainer__schedules.note',
+                    DB::raw("4.8 as rating"),
+                    DB::raw("
+                        CASE DAYOFWEEK(trainer__schedules.date)
+                            WHEN 2 THEN 'T2'
+                            WHEN 3 THEN 'T3'
+                            WHEN 4 THEN 'T4'
+                            WHEN 5 THEN 'T5'
+                            WHEN 6 THEN 'T6'
+                            WHEN 7 THEN 'T7'
+                            WHEN 1 THEN 'CN'
+                        END as active_day
+                    ")
+                )
+                ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy danh sách huấn luyện viên thành công.',
+            'data' => $data,
+        ]);
+    }
+
+    public function getPackage()
+    {
+        $data = Package::join('trainer__schedules', 'packages.id', '=', 'trainer__schedules.id_package')
+            ->where('packages.status', Package::HOAT_DONG)
+            ->where('trainer__schedules.approval_status', TrainerSchedule::DA_DUYET)
+            ->select(
+                'packages.id',
+                'packages.name',
+                'packages.price',
+                'packages.duration_days',
+                'packages.description',
+                'packages.is_popular'
+            )
+            ->distinct()
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy danh sách gói tập thành công.',
+            'data' => $data,
+        ], 200);
+    }
+
+    public function getScheduleDetail($id)
+    {
+        $data = TrainerSchedule::join('packages', 'trainer__schedules.id_package', '=', 'packages.id')
+            ->join('trainers', 'trainer__schedules.id_trainer', '=', 'trainers.id')
+            ->join('branches', 'trainer__schedules.id_branch', '=', 'branches.id')
+            ->where('trainer__schedules.id', $id)
+            ->select(
+                'trainer__schedules.id',
+                'trainer__schedules.title',
+                // 'trainer__schedules.date',
+                DB::raw(" DATE_FORMAT( trainer__schedules.date, '%d/%m/%Y' ) as date "),
+                'trainer__schedules.start_time',
+                'trainer__schedules.end_time',
+                'trainer__schedules.room',
+
+                'packages.name as package_name',
+                'packages.price',
+
+                'trainers.name as trainer_name',
+                'trainers.avatar',
+                'trainers.experience',
+
+                'branches.name as branch_name'
+            )
+            ->first();
+            $start = \Carbon\Carbon::parse($data->start_time);
+            $end = \Carbon\Carbon::parse($data->end_time);
+
+            $data->duration = $start->diffInMinutes($end);
+
+        return response()->json([
+            'status' => true,
+            'data' => $data,
+        ]);
+    }
+    public function getScheduleTitles()
+    {
+        $data = TrainerSchedule::select('id', 'title')->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data,
+        ]);
+    }
+
+
+
+
+
+
+
     
 
 
-   
 
 }

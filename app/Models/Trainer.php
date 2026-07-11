@@ -33,6 +33,7 @@ class Trainer extends Authenticatable
         'hash_active',
         'status',
         'id_branch',
+        'specialization',
     ];
 
     protected $hidden = [
@@ -46,29 +47,5 @@ class Trainer extends Authenticatable
         return $this->password;
     }
 
-    // Relations
-    public function branch()
-    {
-        return $this->belongsTo(Branch::class, 'id_branch');
-    }
-
-    public function schedules()
-    {
-        return $this->hasMany(TrainerSchedule::class, 'id_trainer');
-    }
-
-    public function salaries()
-    {
-        return $this->hasMany(TrainerSalary::class, 'id_trainer');
-    }
-
-    public function notes()
-    {
-        return $this->hasMany(TrainerNote::class, 'id_trainer');
-    }
-
-    public function attendances()
-    {
-        return $this->hasMany(Attendance::class, 'id_trainer');
-    }
+    
 }

@@ -11,9 +11,6 @@ class Package extends Model
 
     protected $table = 'packages';
 
-    const HOAT_DONG = 1;
-    const DUNG      = 0;
-
     protected $fillable = [
         'name',
         'slug',
@@ -24,8 +21,6 @@ class Package extends Model
         'is_popular',
     ];
 
-    public function scheduleMembers()
-    {
-        return $this->hasMany(ScheduleMember::class, 'id_package');
-    }
+    const  HOAT_DONG = 1;
+    const NGUNG_HOAT_DONG = 0;
 }

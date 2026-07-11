@@ -69,6 +69,30 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
     Route::get('/my-schedule/{id}', [ScheduleMemberController::class, 'scheduleDetail']);
 
+
+    Route::get('/title',       [MembersController::class, 'getScheduleTitles']);
+
+    Route::get('/my-trainer',  [MembersController::class, 'getTrainer']);
+
+
+    Route::get('/package/{id_package}/trainers',[MembersController::class, 'getTrainerByPackage']); // lấy theo gói xem gói đó có bao nhiêu hlv
+
+    Route::get('/packages', [MembersController::class, 'getPackage']); // lấy gói
+
+    Route::get('/schedule/{id}', [MembersController::class, 'getScheduleDetail']); // lấy chi tiết đặt lịch trước khi thanh toán 
+
+
+
+
+
+
+
+
+    
+
+
+
+
 });
 
 // ============================================================

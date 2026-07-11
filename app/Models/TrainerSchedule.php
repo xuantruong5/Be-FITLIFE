@@ -11,24 +11,15 @@ class TrainerSchedule extends Model
 
     protected $table = 'trainer__schedules';
 
-    // approval_status
-    const CHO_DUYET     = 0;
-    const DA_DUYET      = 1;
-    const TU_CHOI       = 2;
-
-    // status
-    const SAP_DIEN_RA       = 0;
-    const DANG_DIEN_RA      = 1;
-    const DA_HOAN_THANH     = 2;
-    const DA_HUY            = 3;
-
     protected $fillable = [
         'title',
         'date',
         'start_time',
         'end_time',
         'room',
+        'id_package',
         'max_members',
+        'current_members',
         'approval_status',
         'status',
         'id_branch',
@@ -36,35 +27,12 @@ class TrainerSchedule extends Model
         'admin_note',
         'note',
     ];
+    const CHUA_DUYET = 0;
+    const DA_DUYET  = 1;
+    const TU_CHOI = 2;
 
-    // Relations
-    public function trainer()
-    {
-        return $this->belongsTo(Trainer::class, 'id_trainer');
-    }
-
-    public function branch()
-    {
-        return $this->belongsTo(Branch::class, 'id_branch');
-    }
-
-    public function scheduleMembers()
-    {
-        return $this->hasMany(ScheduleMember::class, 'id_schedule');
-    }
-
-    public function attendances()
-    {
-        return $this->hasMany(Attendance::class, 'id_schedule');
-    }
-
-    public function reschedules()
-    {
-        return $this->hasMany(Reschedule::class, 'id_schedule');
-    }
-
-    public function trainerNotes()
-    {
-        return $this->hasMany(TrainerNote::class, 'id_schedule');
-    }
+    const SAP_DIEN_RA = 0;
+    const DANG_HOAT_DONG = 1;
+    const DA_HOAN_THANH = 2;
+    const DA_HUY = 3;
 }
