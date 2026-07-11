@@ -5,6 +5,9 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+<a href="https://hoduongquochuy278.github.io/FITLIFE-documents/" target="_blank">
+    <img src="https://img.shields.io/badge/Documentation-FITLIFE-blue?style=for-the-badge&logo=readthedocs" alt="FITLIFE Documentation">
+</a>
 </p>
 
 ## About Laravel
