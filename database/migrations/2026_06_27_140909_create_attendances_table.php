@@ -19,6 +19,7 @@ return new class extends Migration
             $table->integer('id_trainer');
             $table->integer('id_schedule');
             $table->integer('id_member');
+            $table->integer('id_schedule_member');
             $table->timestamps();
         });
     }

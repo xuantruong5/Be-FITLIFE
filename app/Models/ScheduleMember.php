@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Models;
+use App\Models\Member;
+use App\Models\Attendance;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +28,22 @@ class ScheduleMember extends Model
     const CHECK_IN = 1;
     const HOAN_THANH = 2;
     const DA_HUY = 3;
+
+
+
+    public function member()
+    {
+        return $this->belongsTo(Member::class, 'id_member', 'id');
+    }
+
+    public function attendance()
+    {
+        return $this->hasOne(Attendance::class,'id_schedule_member','id');
+    }
+
+    
+
+
 
 
 

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('old_schedule_id');
 
             // lịch mới
-            $table->integer('new_schedule_id');
+            $table->integer('new_schedule_id')->nullable();
             $table->date('date');
             $table->time('start_time');
             $table->time('end_time');
@@ -33,8 +33,10 @@ return new class extends Migration
 
 
             // $table->integer('id_schedule');
-            $table->integer('id_member');
-            $table->integer('id_trainer');
+            $table->integer('id_member')->nullable();
+            $table->integer('id_trainer')->nullable();
+            $table->string('trainer_note')->nullable();
+
 
 
             $table->text('admin_note')->nullable();

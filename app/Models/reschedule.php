@@ -28,6 +28,9 @@ class Reschedule extends Model
     const DA_DUYET  = 0;
     const CHO_DUYET = 1;
     const TU_CHOI   = 2;
+
+
+
     const MEMBER = 0;
-    const ADMIN = 1;
+    const TRAINNER = 1;
 }

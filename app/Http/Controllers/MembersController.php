@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MasterMail;
 use Carbon\Carbon;
+use App\Models\Attendance;
 
 
 
@@ -598,6 +599,23 @@ class MembersController extends Controller
             'order_code' => $orderCode,
             'payment_method' => $request->payment_method,
         ]);
+        $trainerSchedule = TrainerSchedule::create([
+            'title'            => 'Buổi tập - ' . $member->name,
+            'date'             => now()->toDateString(), // hoặc $request->date nếu member chọn ngày
+            'start_time'       => $schedule->start_time,
+            'end_time'         => $schedule->end_time,
+            'room'             => $schedule->room,
+
+            'id_package'       => $schedule->id_package,
+            'max_members'      => 1,
+            'current_members'  => 1,
+
+            'approval_status'  => TrainerSchedule::DA_DUYET,
+            'status'           => TrainerSchedule::DANG_HOAT_DONG,
+
+            'id_branch'        => $schedule->id_branch,
+            'id_trainer'       => $schedule->id_trainer,
+        ]);
 
 
        $orderDetail = OrderDetail::create([
@@ -606,7 +624,7 @@ class MembersController extends Controller
             'id_package' => $schedule->id_package,
             'id_trainer' => $schedule->id_trainer,
             'id_member' => $member->id,
-            'id_schedule' => $schedule->id,
+            'id_schedule' => $trainerSchedule->id,
             'id_branch' => $schedule->id_branch,
             'package_name' => $schedule->package_name,
             'package_price' => $schedule->package_price,
@@ -614,8 +632,8 @@ class MembersController extends Controller
             'trainer_avatar' => $schedule->trainer_avatar,
             'trainer_experience' => $schedule->trainer_experience,
             'branch_name' => $schedule->branch_name,
-            'schedule_title' => $schedule->title,
-            'schedule_date' => $schedule->date,
+            'schedule_title' => $trainerSchedule->title,
+            'schedule_date' => $trainerSchedule->date,
             'start_time' => $schedule->start_time,
             'end_time' => $schedule->end_time,
             'duration' => $duration,
@@ -645,6 +663,7 @@ class MembersController extends Controller
             'id_member'       => $member->id,
             'id_package'      => $schedule->id_package,
         ]);
+        
 
 
 
@@ -659,14 +678,22 @@ class MembersController extends Controller
         //         'message' => 'Bạn đã đăng ký lịch tập này rồi.',
         //     ], 400);
         // }
-        ScheduleMember::create([
+       $scheduleMember = ScheduleMember::create([
             'id_member'   => $member->id,
-            'id_schedule' => $schedule->id,
-            'id_trainer_schedule' => $schedule->id,
+            'id_schedule' => $trainerSchedule->id,
+            'id_trainer_schedule' => $trainerSchedule->id,
             'id_package'  => $schedule->id_package,
             'id_order_detail' => $orderDetail->id,
-            'status'      => 0, // Sắp tới
+            'status'      => ScheduleMember::SAP_TOI, // Sắp tới
         ]);
+        Attendance::create([
+            'id_schedule_member' => $scheduleMember->id,
+            'id_member' => $member->id,
+            'id_schedule' => $trainerSchedule->id,
+            'id_trainer' => $schedule->id_trainer,
+            'status' => Attendance::CHUA_DIEM_DANH,
+        ]);
+
 
 
 

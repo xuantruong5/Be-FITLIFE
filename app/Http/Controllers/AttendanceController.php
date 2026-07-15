@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Attendance\IndexAttendanceRequest;
 use App\Http\Requests\Attendance\StoreAttendanceRequest;
 use App\Http\Requests\Attendance\UpdateAttendanceRequest;
+use App\Http\Requests\Trainer\AttendanceRequest;
 use App\Models\Attendance;
 use App\Models\TrainerSchedule;
 use Illuminate\Http\Request;
@@ -113,6 +114,62 @@ class AttendanceController extends Controller
             'status'  => true,
             'message' => 'Lấy lịch sử điểm danh thành công.',
             'data'    => $attendances,
+        ]);
+    }
+
+
+    public function attendances(AttendanceRequest $request)
+    {
+        $trainer = Auth::guard('sanctum')->user();
+
+        if (!$trainer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Vui lòng đăng nhập.'
+            ], 401);
+        }
+        $attendance = Attendance::where('id_schedule_member', $request->id_schedule_member)
+            ->where('id_trainer', $trainer->id)
+            ->first();
+
+        if (!$attendance) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Không tìm thấy dữ liệu điểm danh.'
+            ], 404);
+        }
+
+        // Cập nhật trạng thái
+        $attendance->status = $request->status;
+
+        // Cập nhật thời gian
+        switch ($request->status) {
+
+            case Attendance::CO_MAT:
+                $attendance->check_in_time = now();
+                break;
+
+            case Attendance::DI_TRE:
+                $attendance->check_in_time = now();
+                break;
+
+            case Attendance::VANG:
+                $attendance->check_in_time = null;
+                $attendance->check_out_time = null;
+                break;
+
+            case Attendance::CHUA_DIEM_DANH:
+                $attendance->check_in_time = null;
+                $attendance->check_out_time = null;
+                break;
+        }
+
+        $attendance->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Điểm danh thành công.',
+            'data' => $attendance
         ]);
     }
 }

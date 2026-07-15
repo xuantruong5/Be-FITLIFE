@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Member\CancelScheduleRequest;
 use App\Http\Requests\Member\ChangeScheduleRequest;
+
 class ScheduleMemberController extends Controller
 {
     /**
@@ -401,6 +402,7 @@ class ScheduleMemberController extends Controller
             ]
         ]);
     }
+   
 
 
 

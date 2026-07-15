@@ -127,7 +127,7 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
     Route::post('/logout-all',   [TrainerController::class, 'logoutAllTrainer']);
 
     // Lịch tập của HLV
-    Route::get('/schedules',          [TrainerScheduleController::class, 'index']);
+    // Route::get('/schedules',          [TrainerScheduleController::class, 'index']);
     Route::post('/schedules',         [TrainerScheduleController::class, 'store']);
     Route::get('/schedules/{id}',     [TrainerScheduleController::class, 'show']);
     Route::put('/schedules/{id}',     [TrainerScheduleController::class, 'update']);
@@ -157,6 +157,25 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 
     // Xem lương
     Route::get('/my-salary',          [TrainerSalaryController::class, 'mySalary']);
+
+
+
+
+    Route::get('/goi/chi-nhanh',        [TrainerController::class, 'getGoiChiNhanh']);
+    Route::post('/create-schedule',     [TrainerScheduleController::class, 'StoreSchedule']);
+    Route::get('/schedules',            [TrainerScheduleController::class, 'getSchedules']);
+    Route::post('/change-schedule',     [TrainerScheduleController::class, 'changeSchedule']);
+
+    // lấy học viên 
+    Route::get('/member-packages', [TrainerController::class, 'memberPackages']);
+
+    Route::get('today-schedules',       [TrainerScheduleController::class, 'getTodaySchedules']);
+
+    Route::post('change/attendances',   [AttendanceController::class, 'attendances']);
+
+
+
+
 });
 
 // ============================================================

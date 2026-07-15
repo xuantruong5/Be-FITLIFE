@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Models;
+ use App\Models\Package;
+ use App\Models\Branch;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,4 +37,17 @@ class TrainerSchedule extends Model
     const DANG_HOAT_DONG = 1;
     const DA_HOAN_THANH = 2;
     const DA_HUY = 3;
+
+    public function scheduleMembers()
+    {
+        return $this->hasMany(ScheduleMember::class, 'id_schedule', 'id');
+    }
+    public function package()
+    {
+        return $this->belongsTo(Package::class, 'id_package', 'id');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'id_branch', 'id');
+    }
 }
