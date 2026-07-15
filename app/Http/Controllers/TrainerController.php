@@ -9,6 +9,8 @@ use App\Models\Branch;
 use App\Models\Package;
 use App\Models\Attendance;
 use App\Models\MemberPackage;
+use App\Models\OrderDetail;
+use App\Models\DonHang;
 
 use Illuminate\Support\Facades\Route;
 
@@ -170,5 +172,101 @@ class TrainerController extends Controller
             'message' => 'Lấy danh sách học viên thành công.',
             'data' => $packages
         ]);
+    }
+
+    public function income(Request $request)
+    {
+        $trainer = Auth::guard('sanctum')->user();
+
+        if (!$trainer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Vui lòng đăng nhập.'
+            ], 401);
+        }
+
+        $month = $request->month ?? date('m');
+        $year = $request->year ?? date('Y');
+
+        $orders = DB::table('order_details')
+            ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')
+            ->where('order_details.id_trainer', $trainer->id)
+            ->where('order_details.status', OrderDetail::DA_DUYET)
+            ->where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->whereMonth('order_details.created_at', $month)
+            ->whereYear('order_details.created_at', $year)
+            ->get();
+
+        $tongDoanhThu = $orders->sum('total_amount');
+         $chart = [
+        'T1' => 0,
+        'T2' => 0,
+        'T3' => 0,
+        'T4' => 0,
+        'T5' => 0,
+    ];
+
+        foreach ($orders as $order) {
+
+            $day = date('d', strtotime($order->created_at));
+
+            if ($day <= 7) {
+                $chart['T1'] += $order->total_amount;
+            } elseif ($day <= 14) {
+                $chart['T2'] += $order->total_amount;
+            } elseif ($day <= 21) {
+                $chart['T3'] += $order->total_amount;
+            } elseif ($day <= 28) {
+                $chart['T4'] += $order->total_amount;
+            } else {
+                $chart['T5'] += $order->total_amount;
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'tong_don' => $orders->count(),
+            'tong_doanh_thu' => $tongDoanhThu,
+            'thu_nhap' => $tongDoanhThu,
+            'thang' => $month,
+            'nam' => $year,
+
+            'chart' => [
+                [
+                    'week' => 'T1',
+                    'income' => $chart['T1']
+                ],
+                [
+                    'week' => 'T2',
+                    'income' => $chart['T2']
+                ],
+                [
+                    'week' => 'T3',
+                    'income' => $chart['T3']
+                ],
+                [
+                    'week' => 'T4',
+                    'income' => $chart['T4']
+                ],
+                [
+                    'week' => 'T5',
+                    'income' => $chart['T5']
+                ],
+            ],
+
+            'chi_tiet' => $orders
+        ]);
+
+
+
+        // return response()->json([
+        //     'status' => true,
+        //     'tong_don' => $orders->count(),
+        //     'tong_doanh_thu' => $tongDoanhThu,
+        //     'thu_nhap' => $tongDoanhThu,
+        //     'thang' => $month,
+        //     'nam' => $year,
+        //     'chi_tiet' => $orders
+        // ]);
     }
 }

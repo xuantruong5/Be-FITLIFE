@@ -173,6 +173,19 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 
     Route::post('change/attendances',   [AttendanceController::class, 'attendances']);
 
+    // lấy lịch dạy từng học viên 
+    Route::get('member-schedules',       [TrainerScheduleController::class, 'getScheduleMembers']);
+
+
+    Route::get('income',       [TrainerController::class, 'income']);
+
+
+
+    
+
+    
+
+
 
 
 

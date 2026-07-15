@@ -8,9 +8,11 @@ use App\Http\Requests\TrainerSchedule\UpdateTrainerScheduleRequest;
 use App\Http\Requests\Trainer\ChangeScheduleRequest;
 use App\Http\Requests\Trainer\TrainerScheduleRequest;
 use App\Models\TrainerSchedule;
-use App\Models\scheduleMembers;
+use App\Models\ScheduleMember;
 use App\Models\Reschedule;
+use App\Models\DonHang;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class TrainerScheduleController extends Controller
@@ -229,7 +231,12 @@ class TrainerScheduleController extends Controller
 
         $query = TrainerSchedule::with([
             'branch:id,name',
-            'scheduleMembers.member',
+            'scheduleMembers' => function ($q) {
+        $q->whereHas('orderDetail.donHang', function ($order) {
+            $order->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+        });
+    },
+
             'scheduleMembers.attendance',
         ])
         ->where('id_trainer', $trainer->id)
@@ -323,7 +330,7 @@ class TrainerScheduleController extends Controller
 
     public function getTodaySchedules(Request $request)
     {
-        // dd($request->all());
+        
         $trainer = Auth::guard('sanctum')->user();
 
         if (!$trainer) {
@@ -334,13 +341,22 @@ class TrainerScheduleController extends Controller
         }
 
         $query = TrainerSchedule::with([
+            'scheduleMembers' => function ($q) {
+                $q->whereHas('orderDetail.donHang', function ($order) {
+                    $order->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+                });
+            },
+
             'scheduleMembers.member',
             'scheduleMembers.attendance',
             'package',
             'branch',
         ])
         ->where('id_trainer', $trainer->id)
-        ->whereHas('scheduleMembers');
+        ->whereHas('scheduleMembers.orderDetail.donHang', function ($q) {
+                $q->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+            });
+
 
         // Lọc theo ngày
         if ($request->filled('date')) {
@@ -369,6 +385,47 @@ class TrainerScheduleController extends Controller
             'data' => $data
         ]);
     }
+
+    public function getScheduleMembers(Request $request)
+    {
+        $query = ScheduleMember::query()
+            ->join('members', 'schedule_members.id_member', '=', 'members.id')
+            ->join('packages', 'schedule_members.id_package', '=', 'packages.id')
+            ->join('trainer__schedules', 'schedule_members.id_trainer_schedule', '=', 'trainer__schedules.id')
+            ->join('order_details', 'schedule_members.id_order_detail', '=', 'order_details.id')
+            ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')
+            ->leftJoin('attendances', 'schedule_members.id', '=', 'attendances.id_schedule_member')
+            >where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->select(
+                'schedule_members.*',
+                'members.name as member_name',
+                'packages.name as package_name',
+                'trainer__schedules.date as schedule_date',
+                'trainer__schedules.start_time as schedule_start',
+                'trainer__schedules.end_time as schedule_end',
+                DB::raw("DATE_FORMAT(trainer__schedules.date, '%d/%m/%Y') as schedule_date_format"),
+                'trainer__schedules.start_time as trainer_start',
+                'trainer__schedules.end_time as trainer_end',
+                'attendances.status as attendance_status'
+            );
+
+             // Lọc theo ngày
+            if ($request->filled('date')) {
+                $query->whereDate('trainer__schedules.date', $request->date);
+            }
+
+            $data = $query->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    
+
+
+
 
     
 

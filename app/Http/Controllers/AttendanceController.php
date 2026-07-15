@@ -8,6 +8,8 @@ use App\Http\Requests\Attendance\UpdateAttendanceRequest;
 use App\Http\Requests\Trainer\AttendanceRequest;
 use App\Models\Attendance;
 use App\Models\TrainerSchedule;
+use App\Models\ScheduleMember;
+use App\Models\MemberPackage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -138,6 +140,9 @@ class AttendanceController extends Controller
                 'message' => 'Không tìm thấy dữ liệu điểm danh.'
             ], 404);
         }
+        $oldStatus = $attendance->status;
+
+
 
         // Cập nhật trạng thái
         $attendance->status = $request->status;
@@ -165,6 +170,43 @@ class AttendanceController extends Controller
         }
 
         $attendance->save();
+        
+        $scheduleMember = ScheduleMember::find($attendance->id_schedule_member);
+
+        if ($scheduleMember) {
+
+            $memberPackage = MemberPackage::find($scheduleMember->id_package);
+
+            if ($memberPackage) {
+
+                $oldChecked = $oldStatus != Attendance::CHUA_DIEM_DANH;
+                $newChecked = $request->status != Attendance::CHUA_DIEM_DANH;
+
+                // Chỉ cộng 1 lần
+                if (!$oldChecked && $newChecked) {
+                    $memberPackage->used_sessions++;
+                }
+
+                // Nếu trả về chưa điểm danh thì trừ lại
+                if ($oldChecked && !$newChecked) {
+                    $memberPackage->used_sessions--;
+                }
+
+                // Không cho âm
+                if ($memberPackage->used_sessions < 0) {
+                    $memberPackage->used_sessions = 0;
+                }
+
+                // Hết buổi thì khóa gói
+                if ($memberPackage->used_sessions >= $memberPackage->total_sessions) {
+                    $memberPackage->status = 0;
+                }
+
+                $memberPackage->save();
+            }
+        }
+
+
 
         return response()->json([
             'status' => true,

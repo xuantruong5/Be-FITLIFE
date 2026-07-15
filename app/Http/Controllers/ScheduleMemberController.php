@@ -6,7 +6,9 @@ use App\Models\ScheduleMember;
 use App\Models\TrainerSchedule;
 use App\Models\MemberPackage;
 use App\Models\OrderDetail;
+use App\Models\DonHang;
 use App\Models\Reschedule;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,43 +90,11 @@ class ScheduleMemberController extends Controller
     public function mySchedule()
     {
         $member = Auth::guard('sanctum')->user();
-        // $data = ScheduleMember::join( 'trainer__schedules', 'schedule_members.id_schedule', '=', 'trainer__schedules.id')
-        //     ->join( 'trainers', 'trainer__schedules.id_trainer', '=', 'trainers.id')
-        //     ->join( 'packages',  'schedule_members.id_package', '=', 'packages.id')
-        //     ->join('branches', 'trainer__schedules.id_branch', '=', 'branches.id')
-        //     ->where('schedule_members.id_member', $member->id)
-        //     ->select('schedule_members.id', 'trainer__schedules.title',    'trainer__schedules.start_time', 
-        //     'trainer__schedules.end_time', 'trainer__schedules.room','trainers.name as trainer_name','packages.name as package_name',
-        //     'branches.name as branch_name',  'branches.address as branch_address', 'branches.phone as branch_phone',
-        //     DB::raw("DATE_FORMAT(trainer__schedules.date, '%d/%m/%Y') as created_date"),
-        //         // // Các thông tin khác
-        //         // 'schedule_members.checked_in_at',
-        //         // 'schedule_members.trainer_note',
-        //         // 'schedule_members.cancel_reason',
-        //         DB::raw("
-        //             CASE schedule_members.status
-        //                 WHEN 0 THEN 'Sắp tới'
-        //                 WHEN 1 THEN 'Check-in'
-        //                 WHEN 2 THEN 'Hoàn thành'
-        //                 WHEN 3 THEN 'Đã hủy'
-        //             END AS status_text
-        //         "),
-        //         DB::raw("
-        //             CASE schedule_members.status
-        //                 WHEN 0 THEN '#4FC3F7'  -- Sắp tới (cam)
-        //                 WHEN 1 THEN '#4FC3F7'  -- Check-in (xanh dương)
-        //                 WHEN 2 THEN '#4CD964'  -- Hoàn thành (xanh lá)
-        //                 WHEN 3 THEN '#FF3B30'  -- Đã hủy (đỏ)
-        //                 ELSE '#999999'
-        //             END AS status_color
-        //         ")
-        //     )
-        //     ->orderBy('trainer__schedules.date')
-        //     ->orderBy('trainer__schedules.start_time')
-        //     ->get();
+       
         $data = ScheduleMember::join('order_details', 'schedule_members.id_order_detail', '=', 'order_details.id')
+        ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')
         ->where('schedule_members.id_member', $member->id)
-        ->where('order_details.status', OrderDetail::DA_DUYET)
+        ->where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
         ->select(
             'schedule_members.id',
             'order_details.schedule_title as title',

@@ -3,6 +3,8 @@
 namespace App\Models;
 use App\Models\Member;
 use App\Models\Attendance;
+use App\Models\OrderDetail;
+
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,10 +37,13 @@ class ScheduleMember extends Model
     {
         return $this->belongsTo(Member::class, 'id_member', 'id');
     }
-
     public function attendance()
     {
         return $this->hasOne(Attendance::class,'id_schedule_member','id');
+    }
+    public function orderDetail()
+    {
+        return $this->belongsTo(OrderDetail::class, 'id_order_detail', 'id');
     }
 
     

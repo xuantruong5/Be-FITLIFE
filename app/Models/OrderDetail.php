@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\DonHang;
 
 class OrderDetail extends Model
 {
@@ -40,5 +41,10 @@ class OrderDetail extends Model
     const DA_DUYET  = 1;
     const TU_CHOI   = 2;
     const DA_HUY    = 3;
+
+    public function donHang()
+    {
+        return $this->belongsTo(DonHang::class, 'id_don_hang', 'id');
+    }
 
 }

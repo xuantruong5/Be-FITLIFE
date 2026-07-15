@@ -293,13 +293,15 @@ class MembersController extends Controller
     public function myPackage()
     {
         $member = Auth::guard('sanctum')->user();
+
         $data = MemberPackage::join('packages', 'member_packages.id_package', '=', 'packages.id')
         ->join('order_details', function ($join) {
                         $join->on('member_packages.id_member', '=', 'order_details.id_member')
                             ->on('member_packages.id_package', '=', 'order_details.id_package');
-                    })           
+                    })
+        ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')         
         ->where('member_packages.id_member', $member->id)
-        ->where('order_details.status', OrderDetail::DA_DUYET)
+        ->where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
         ->select(
             'member_packages.*',
             'packages.name as package_name',
@@ -466,7 +468,9 @@ class MembersController extends Controller
     }
     public function getScheduleTitles()
     {
-        $data = TrainerSchedule::select('id', 'title')->get();
+        $data = TrainerSchedule::where('id', '<=', 6)
+            ->select('id', 'title')
+            ->get();
 
         return response()->json([
             'status' => true,
@@ -550,43 +554,7 @@ class MembersController extends Controller
         $promotionId = $request->id_promotion ?? null;
         $totalAmount = max(0, $subtotal - $discount);
 
-        // test ma khuyen mai 
-        // if ($request->filled('code')) {
-        //     $promotion = Promotion::where('code',$request->code)
-        //     ->where('status',1)
-        //     ->first();
-
-        //     if (!$promotion) {
-        //         return response()->json([
-        //             'status'=>false,
-        //             'message'=>'Mã giảm giá không hợp lệ'
-        //         ],400);
-        //     }
-
-        //     if (!$promotion) {
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => 'Không tìm thấy khuyến mãi.'
-        //         ], 404);
-        //     }
-        //     $promotionId = $promotion->id;
-
-        //     if ($promotion->type == 0) {
-
-        //         $discount = ($subtotal * $promotion->value) / 100;
-
-        //         if ($promotion->max_discount) {
-        //             $discount = min($discount, $promotion->max_discount);
-        //         }
-
-        //     } else {
-
-        //         $discount = $promotion->value;
-        //     }
-
-        //     $promotion->increment('used_quantity');
-        // }
-        // $totalAmount = max(0, $subtotal - $discount);
+      
         $orderCode = 'DH' . now()->format('YmdHis') . rand(100, 999);
         $order = DonHang::create([
             'id_member' => $member->id,
@@ -599,23 +567,23 @@ class MembersController extends Controller
             'order_code' => $orderCode,
             'payment_method' => $request->payment_method,
         ]);
-        $trainerSchedule = TrainerSchedule::create([
-            'title'            => 'Buổi tập - ' . $member->name,
-            'date'             => now()->toDateString(), // hoặc $request->date nếu member chọn ngày
-            'start_time'       => $schedule->start_time,
-            'end_time'         => $schedule->end_time,
-            'room'             => $schedule->room,
+        // $trainerSchedule = TrainerSchedule::create([
+        //     'title'            => 'Buổi tập - ' . $member->name,
+        //     'date'             => now()->toDateString(), // hoặc $request->date nếu member chọn ngày
+        //     'start_time'       => $schedule->start_time,
+        //     'end_time'         => $schedule->end_time,
+        //     'room'             => $schedule->room,
 
-            'id_package'       => $schedule->id_package,
-            'max_members'      => 1,
-            'current_members'  => 1,
+        //     'id_package'       => $schedule->id_package,
+        //     'max_members'      => 1,
+        //     'current_members'  => 1,
 
-            'approval_status'  => TrainerSchedule::DA_DUYET,
-            'status'           => TrainerSchedule::DANG_HOAT_DONG,
+        //     'approval_status'  => TrainerSchedule::DA_DUYET,
+        //     'status'           => TrainerSchedule::DANG_HOAT_DONG,
 
-            'id_branch'        => $schedule->id_branch,
-            'id_trainer'       => $schedule->id_trainer,
-        ]);
+        //     'id_branch'        => $schedule->id_branch,
+        //     'id_trainer'       => $schedule->id_trainer,
+        // ]);
 
 
        $orderDetail = OrderDetail::create([
@@ -624,7 +592,8 @@ class MembersController extends Controller
             'id_package' => $schedule->id_package,
             'id_trainer' => $schedule->id_trainer,
             'id_member' => $member->id,
-            'id_schedule' => $trainerSchedule->id,
+            // 'id_schedule' => $trainerSchedule->id,
+            'id_schedule' =>  $schedule->id, // hoặc bỏ nếu cho phép
             'id_branch' => $schedule->id_branch,
             'package_name' => $schedule->package_name,
             'package_price' => $schedule->package_price,
@@ -632,8 +601,8 @@ class MembersController extends Controller
             'trainer_avatar' => $schedule->trainer_avatar,
             'trainer_experience' => $schedule->trainer_experience,
             'branch_name' => $schedule->branch_name,
-            'schedule_title' => $trainerSchedule->title,
-            'schedule_date' => $trainerSchedule->date,
+            'schedule_title' => $schedule->title,
+            'schedule_date' =>  $schedule->date,
             'start_time' => $schedule->start_time,
             'end_time' => $schedule->end_time,
             'duration' => $duration,
@@ -641,58 +610,95 @@ class MembersController extends Controller
             'subtotal' => $subtotal,
             'discount' => $discount,
             'total_amount' => $totalAmount,
-            'status' => OrderDetail::CHO_DUYET,
+            'status' => OrderDetail::DA_DUYET,
         ]);
 
-        $memberPackage = MemberPackage::where('id_member', $member->id)
-            ->where('status', 1)
-            ->first();
-        MemberPackage::create([
-            'price'           => $schedule->package_price,
-            'start_date'      => now()->toDateString(),
-            'end_date'        => now()->addDays($schedule->duration_days)->toDateString(),
+        // $memberPackage = MemberPackage::where('id_member', $member->id)
+        //     ->where('status', 1)
+        //     ->first();
+        // MemberPackage::create([
+        //     'price'           => $schedule->package_price,
+        //     'start_date'      => now()->toDateString(),
+        //     'end_date'        => now()->addDays($schedule->duration_days)->toDateString(),
 
-            // Thay bằng giá trị thực của gói nếu có trong bảng packages
-            'total_sessions'  => 16,
-            'used_sessions'   => 0,
-            'pt_sessions'     => 4,
+        //     // Thay bằng giá trị thực của gói nếu có trong bảng packages
+        //     'total_sessions'  => 16,
+        //     'used_sessions'   => 0,
+        //     'pt_sessions'     => 4,
 
-            'status'          => 1, // Đang hoạt động
+        //     'status'          => 1, // Đang hoạt động
 
-            'id_trainer'      => $schedule->id_trainer,
-            'id_member'       => $member->id,
-            'id_package'      => $schedule->id_package,
-        ]);
-        
+        //     'id_trainer'      => $schedule->id_trainer,
+        //     'id_member'       => $member->id,
+        //     'id_package'      => $schedule->id_package,
+        // ]);
 
-
-
-
-        // $exists = ScheduleMember::where('id_member', $member->id)
-        //     ->where('id_schedule', $schedule->id)
-        //     ->exists();
-
-        // if ($exists) {
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => 'Bạn đã đăng ký lịch tập này rồi.',
-        //     ], 400);
-        // }
-       $scheduleMember = ScheduleMember::create([
-            'id_member'   => $member->id,
-            'id_schedule' => $trainerSchedule->id,
-            'id_trainer_schedule' => $trainerSchedule->id,
-            'id_package'  => $schedule->id_package,
-            'id_order_detail' => $orderDetail->id,
-            'status'      => ScheduleMember::SAP_TOI, // Sắp tới
-        ]);
-        Attendance::create([
-            'id_schedule_member' => $scheduleMember->id,
-            'id_member' => $member->id,
-            'id_schedule' => $trainerSchedule->id,
+        $memberPackage = MemberPackage::create([
+            'price' => $schedule->package_price,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays($schedule->duration_days)->toDateString(),
+            'total_sessions' => 16,
+            'used_sessions' => 0,
+            'pt_sessions' => 4,
+            'status' => 1,
             'id_trainer' => $schedule->id_trainer,
-            'status' => Attendance::CHUA_DIEM_DANH,
+            'id_member' => $member->id,
+            'id_package' => $schedule->id_package,
         ]);
+        $startDate = Carbon::today();
+
+        for ($i = 0; $i < $memberPackage->total_sessions; $i++) {
+
+            $date = $startDate->copy()->addDays($i * 2);
+
+            $trainerSchedule = TrainerSchedule::create([
+                'title' => 'Buổi tập - ' . $member->name,
+                'date' => $date->toDateString(),
+                'start_time' => $schedule->start_time,
+                'end_time' => $schedule->end_time,
+                'room' => $schedule->room,
+                'id_package' => $schedule->id_package,
+                'max_members' => 1,
+                'current_members' => 1,
+                'approval_status' => TrainerSchedule::DA_DUYET,
+                'status' => TrainerSchedule::DANG_HOAT_DONG,
+                'id_branch' => $schedule->id_branch,
+                'id_trainer' => $schedule->id_trainer,
+            ]);
+
+            $scheduleMember = ScheduleMember::create([
+                'id_member' => $member->id,
+                'id_schedule' => $trainerSchedule->id,
+                'id_trainer_schedule' => $trainerSchedule->id,
+                'id_package' => $schedule->id_package,
+                'id_order_detail' => $orderDetail->id,
+                'status' => ScheduleMember::SAP_TOI,
+            ]);
+
+            Attendance::create([
+                'id_schedule_member' => $scheduleMember->id,
+                'id_member' => $member->id,
+                'id_schedule' => $trainerSchedule->id,
+                'id_trainer' => $schedule->id_trainer,
+                'status' => Attendance::CHUA_DIEM_DANH,
+            ]);
+        }
+
+        //    $scheduleMember = ScheduleMember::create([
+        //         'id_member'   => $member->id,
+        //         'id_schedule' => $trainerSchedule->id,
+        //         'id_trainer_schedule' => $trainerSchedule->id,
+        //         'id_package'  => $schedule->id_package,
+        //         'id_order_detail' => $orderDetail->id,
+        //         'status'      => ScheduleMember::SAP_TOI, // Sắp tới
+        //     ]);
+        //     Attendance::create([
+        //         'id_schedule_member' => $scheduleMember->id,
+        //         'id_member' => $member->id,
+        //         'id_schedule' => $trainerSchedule->id,
+        //         'id_trainer' => $schedule->id_trainer,
+        //         'status' => Attendance::CHUA_DIEM_DANH,
+        //     ]);
 
 
 
@@ -703,6 +709,8 @@ class MembersController extends Controller
             'data' => $order,
         ]);
     }
+
+    
     public function checkPromotion(Request $request)
     {
         if (!$request->code) {
