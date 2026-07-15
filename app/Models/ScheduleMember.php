@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\OrderDetail;
 
 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

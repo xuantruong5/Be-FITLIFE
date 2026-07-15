@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             DonHangSeeder::class,
             PromotionSeeder::class,
             OrderDetailSeeder::class,
+            AdminSeeder::class,
        ]);
     }
 }

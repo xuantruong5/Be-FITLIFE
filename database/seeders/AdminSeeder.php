@@ -12,22 +12,41 @@ class AdminSeeder extends Seeder
     /**
      * Run the database seeds.
      */
+    // public function run(): void
+    // {
+    //     DB::table('branches')->truncate();
+    //     $passwordHashed = bcrypt('123456');
+    //     DB::table('admins')->insert([
+    //         'name' => 'Administrator',
+    //         'phone' => '0123456789',
+    //         'email' => 'admin@gmail.com',
+    //         'password' => $passwordHashed,
+    //         'status' => 1,
+    //         'avatar' => null,
+    //         'date_of_birth' => '2000-01-01',
+    //         'bio' => 'System Administrator',
+    //         'last_login_at' => null,
+    //         'created_at' => now(),
+    //         'updated_at' => now(),
+    //     ]);
+    // }
     public function run(): void
     {
-        DB::table('branches')->truncate();
-        $passwordHashed = bcrypt('123456');
-        DB::table('admins')->insert([
-            'name' => 'Administrator',
-            'phone' => '0123456789',
-            'email' => 'admin@gmail.com',
-            'password' => $passwordHashed,
-            'status' => 1,
-            'avatar' => null,
-            'date_of_birth' => '2000-01-01',
-            'bio' => 'System Administrator',
-            'last_login_at' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::table('admins')->updateOrInsert(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Administrator',
+                'phone' => '0123456789',
+                'password' => bcrypt('123456'),
+                'status' => 1,
+                'avatar' => null,
+                'date_of_birth' => '2000-01-01',
+                'bio' => 'System Administrator',
+                'last_login_at' => null,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
     }
+
 }

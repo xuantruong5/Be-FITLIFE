@@ -194,39 +194,50 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 // ============================================================
 // ADMIN ROUTES (Cần đăng nhập với token admin)
 // ============================================================
-Route::prefix('admin')->group(function () {
-    // Auth (public)
     Route::post('/login',  [AdminController::class, 'adminLogin']);
+    Route::group(['prefix' => 'admin','middleware' => 'AdminMiddleware'], function () {
+            Route::post('/logout', [AdminController::class, 'adminLogout']);
+            Route::get('/check-token', [AdminController::class, 'checkTokenAdmin']);
+            Route::get('/dashboard',       [AdminController::class, 'index']);
+            Route::get('/member',       [AdminController::class, 'getMember']);
+            Route::get('/trainner',       [AdminController::class, 'getTrainner']);
+            Route::get('/package',       [AdminController::class, 'getPackage']);
+            Route::post('store/packages',      [PackageController::class, 'storePackage']);
 
-    // Protected
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/logout', [AdminController::class, 'adminLogout']);
 
-        // Chi nhánh
-        Route::get('/branches',       [BranchController::class, 'index']);
-        Route::post('/branches',      [BranchController::class, 'store']);
-        Route::get('/branches/{id}',  [BranchController::class, 'show']);
-        Route::put('/branches/{id}',  [BranchController::class, 'update']);
-        Route::delete('/branches/{id}',[BranchController::class, 'destroy']);
+            Route::get('/reschedule', [AdminController::class, 'getReschedules']);
+          
 
-        // Gói tập
-        Route::get('/packages',       [PackageController::class, 'indexAdmin']);
-        Route::post('/packages',      [PackageController::class, 'store']);
-        Route::get('/packages/{id}',  [PackageController::class, 'show']);
-        Route::put('/packages/{id}',  [PackageController::class, 'update']);
-        Route::delete('/packages/{id}',[PackageController::class, 'destroy']);
 
-        // Lịch tập (admin duyệt)
-        Route::get('/schedules',                   [TrainerScheduleController::class, 'indexAdmin']);
-        Route::get('/schedules/{id}',              [TrainerScheduleController::class, 'show']);
-        Route::post('/schedules/{id}/approve',     [TrainerScheduleController::class, 'approve']);
-        Route::post('/schedules/{id}/reject',      [TrainerScheduleController::class, 'reject']);
 
-        // Lương HLV
-        Route::get('/salaries',        [TrainerSalaryController::class, 'index']);
-        Route::post('/salaries',       [TrainerSalaryController::class, 'store']);
-        Route::get('/salaries/{id}',   [TrainerSalaryController::class, 'show']);
-        Route::put('/salaries/{id}',   [TrainerSalaryController::class, 'update']);
-        Route::post('/salaries/{id}/pay', [TrainerSalaryController::class, 'pay']);
+
+
+
+            // Chi nhánh
+            Route::get('/branches',       [BranchController::class, 'index']);
+            Route::post('/branches',      [BranchController::class, 'store']);
+            Route::get('/branches/{id}',  [BranchController::class, 'show']);
+            Route::put('/branches/{id}',  [BranchController::class, 'update']);
+            Route::delete('/branches/{id}',[BranchController::class, 'destroy']);
+
+            // Gói tập
+            Route::get('/packages',       [PackageController::class, 'indexAdmin']);
+            Route::post('/packages',      [PackageController::class, 'store']);
+            Route::get('/packages/{id}',  [PackageController::class, 'show']);
+            Route::put('/packages/{id}',  [PackageController::class, 'update']);
+            Route::delete('/packages/{id}',[PackageController::class, 'destroy']);
+
+            // Lịch tập (admin duyệt)
+            Route::get('/schedules',                   [TrainerScheduleController::class, 'indexAdmin']);
+            Route::get('/schedules/{id}',              [TrainerScheduleController::class, 'show']);
+            Route::post('/schedules/{id}/approve',     [TrainerScheduleController::class, 'approve']);
+            Route::post('/schedules/{id}/reject',      [TrainerScheduleController::class, 'reject']);
+
+            // Lương HLV
+            Route::get('/salaries',        [TrainerSalaryController::class, 'index']);
+            Route::post('/salaries',       [TrainerSalaryController::class, 'store']);
+            Route::get('/salaries/{id}',   [TrainerSalaryController::class, 'show']);
+            Route::put('/salaries/{id}',   [TrainerSalaryController::class, 'update']);
+            Route::post('/salaries/{id}/pay', [TrainerSalaryController::class, 'pay']);
+        
     });
-});

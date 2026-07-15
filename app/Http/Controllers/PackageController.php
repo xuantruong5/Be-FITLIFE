@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Package\StorePackageRequest;
+// use App\Http\Requests\Package\StorePackageRequest;
 use App\Http\Requests\Package\UpdatePackageRequest;
+use App\Http\Requests\Admin\StorePackageRequest;
 use App\Models\Package;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class PackageController extends Controller
@@ -105,4 +107,39 @@ class PackageController extends Controller
             'message' => 'Đã dừng gói tập thành công.',
         ]);
     }
+
+    public function storePackage(StorePackageRequest $request)
+    {
+        
+        $durationDays = match ((int) $request->duration_months) {
+            1 => 30,
+            3 => 90,
+            6 => 180,
+            12 => 365,
+            default => 30,
+        };
+
+        $package = Package::create([
+            'name' => $request->name,
+            'slug' => $request->slug ?? Str::slug($request->name),
+            'price' => $request->price,
+            'duration_days' => $durationDays,
+            'description' => $request->description,
+            'status' => $request->status,
+            'is_popular' => $request->is_popular ?? 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo gói tập thành công.',
+            'data' => $package
+        ], 201);
+    }
+
+
+
+
+
+
+
 }
