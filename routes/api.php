@@ -56,6 +56,14 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
     Route::get('/reschedules',    [RescheduleController::class, 'myReschedules']);
     Route::post('/reschedules',   [RescheduleController::class, 'store']);
 
+
+
+
+    
+
+
+
+
     // Ghi chú sức khỏe từ HLV
     Route::get('/my-notes',       [TrainerNoteController::class, 'myNotes']);
 
@@ -74,12 +82,27 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
     Route::get('/my-trainer',  [MembersController::class, 'getTrainer']);
 
+    Route::get('/my-trainer/{id}',  [MembersController::class, 'getTrainerdetail']);
+
 
     Route::get('/package/{id_package}/trainers',[MembersController::class, 'getTrainerByPackage']); // lấy theo gói xem gói đó có bao nhiêu hlv
 
     Route::get('/packages', [MembersController::class, 'getPackage']); // lấy gói
 
     Route::get('/schedule/{id}', [MembersController::class, 'getScheduleDetail']); // lấy chi tiết đặt lịch trước khi thanh toán 
+
+    Route::post('/create-order', [MembersController::class, 'createOrder']);
+    
+    Route::post('/check-promotion', [MembersController::class, 'checkPromotion']);
+
+    Route::get('/orders/check-payment/{orderCode}', [MembersController::class, 'checkPayment']);
+
+    // Huy Lich 
+    Route::post('/cancel-schedule', [ScheduleMemberController::class, 'cancelSchedule']);
+
+    Route::post('/change-schedule', [ScheduleMemberController::class, 'changeSchedule']);
+
+    Route::get('/get-schedule/{id}', [ScheduleMemberController::class, 'getChangeSchedule']); // lấy giờ ngày tháng để đổi lịch 
 
 
 

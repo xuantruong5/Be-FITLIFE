@@ -21,6 +21,8 @@ return new class extends Migration
             $table->integer('id_member');
             $table->string('id_package');
             $table->integer('id_trainer_schedule');
+            $table->integer('id_order_detail');
+
 
             $table->timestamps();
         });

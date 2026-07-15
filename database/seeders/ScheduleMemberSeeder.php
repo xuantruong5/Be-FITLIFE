@@ -23,6 +23,7 @@ class ScheduleMemberSeeder extends Seeder
                 'cancel_reason' => null,
                 'status' => 0, // Sắp tới
                 'id_schedule' => 1,
+                'id_order_detail' => 1,
                 'id_member' => 1,
                 'id_package' => 1,
                 'id_trainer_schedule' => 1,
@@ -37,6 +38,7 @@ class ScheduleMemberSeeder extends Seeder
                 'status' => 1, // Check-in
                 'id_schedule' => 2,
                 'id_member' => 2,
+                'id_order_detail' => 2,
                 'id_package' => 1,
                 'id_trainer_schedule' => 2,
                 'created_at' => now(),
@@ -49,6 +51,7 @@ class ScheduleMemberSeeder extends Seeder
                 'cancel_reason' => null,
                 'status' => 2, // Hoàn thành
                 'id_schedule' => 3,
+                'id_order_detail' => 2,
                 'id_member' => 3,
                 'id_package' => 1,
                 'id_trainer_schedule' => 3,
@@ -63,6 +66,7 @@ class ScheduleMemberSeeder extends Seeder
                 'status' => 3, // Đã hủy
                 'id_schedule' => 1,
                 'id_member' => 2,
+                'id_order_detail' => 3,
                 'id_package' => 1,
                 'id_trainer_schedule' => 1,
                 'created_at' => now(),

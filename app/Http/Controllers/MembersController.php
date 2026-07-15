@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 use App\Http\Requests\Member\RegisterMemberRequest;
 use App\Http\Requests\Member\MemberUpdateProfileRequest;
+use App\Http\Requests\Member\CreateOrderRequest;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\MemberPackage;
+use App\Models\ScheduleMember;
 use App\Models\Package;
 use App\Models\Trainer;
+use App\Models\DonHang;
+use App\Models\Promotion;
+use App\Models\OrderDetail;
 use App\Models\TrainerSchedule;
 use App\Models\Trainer_Schedules;
 use App\Models\schedule_members;
@@ -16,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MasterMail;
+use Carbon\Carbon;
 
 
 
@@ -287,7 +293,12 @@ class MembersController extends Controller
     {
         $member = Auth::guard('sanctum')->user();
         $data = MemberPackage::join('packages', 'member_packages.id_package', '=', 'packages.id')
+        ->join('order_details', function ($join) {
+                        $join->on('member_packages.id_member', '=', 'order_details.id_member')
+                            ->on('member_packages.id_package', '=', 'order_details.id_package');
+                    })           
         ->where('member_packages.id_member', $member->id)
+        ->where('order_details.status', OrderDetail::DA_DUYET)
         ->select(
             'member_packages.*',
             'packages.name as package_name',
@@ -308,7 +319,10 @@ class MembersController extends Controller
             'message' => 'Lấy danh sách gói tập thành công.',
             'data' => $data,
         ], 200);
+        
     }
+    
+
 
     public function getTrainer()
     {
@@ -412,6 +426,8 @@ class MembersController extends Controller
         ], 200);
     }
 
+    
+
     public function getScheduleDetail($id)
     {
         $data = TrainerSchedule::join('packages', 'trainer__schedules.id_package', '=', 'packages.id')
@@ -456,6 +472,316 @@ class MembersController extends Controller
             'data' => $data,
         ]);
     }
+    public function getTrainerdetail($id)
+    {
+        $data = Trainer::join('trainer__schedules', 'trainers.id', '=', 'trainer__schedules.id_trainer')
+                        ->where('trainer__schedules.approval_status', TrainerSchedule::DA_DUYET)
+                        ->where('trainers.id', $id)
+                        ->select(  'trainers.id',  'trainers.name',  'trainers.avatar',
+                                    DB::raw("DATE_FORMAT(trainers.date_of_birth, '%d/%m/%Y') as date_of_birth"),
+                                    DB::raw("DATE_FORMAT(trainer__schedules.date, '%d/%m/%Y') as date"),
+                                    'trainers.address', 'trainers.specialization', 'trainers.experience', 'trainer__schedules.title as schedule',
+                                    DB::raw("
+                                        CONCAT(
+                                            TIME_FORMAT(trainer__schedules.start_time, '%H:%i'),
+                                            ' - ',
+                                            TIME_FORMAT(trainer__schedules.end_time, '%H:%i')
+                                        ) as training_time
+                                    "),
+                                    'trainer__schedules.current_members as total_students',
+                                    'trainer__schedules.note',
+                                    DB::raw("4.8 as rating"),
+                                    DB::raw("
+                                        CASE DAYOFWEEK(trainer__schedules.date)
+                                            WHEN 2 THEN 'T2'
+                                            WHEN 3 THEN 'T3'
+                                            WHEN 4 THEN 'T4'
+                                            WHEN 5 THEN 'T5'
+                                            WHEN 6 THEN 'T6'
+                                            WHEN 7 THEN 'T7'
+                                            WHEN 1 THEN 'CN'
+                                        END as active_day
+                                    ")
+                                )
+        ->first();
+        return response()->json([
+            'status' => true,
+            'message' => 'Lấy thông tin huấn luyện viên thành công.',
+            'data' => $data,
+        ], 200);
+    }
+    public function createOrder(CreateOrderRequest $request)
+    {
+        $member = Auth::guard('sanctum')->user();
+
+        if (!$member) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Vui lòng đăng nhập.'
+            ], 401);
+        }
+        $schedule = TrainerSchedule::join('packages', 'trainer__schedules.id_package', '=', 'packages.id')
+        ->join('trainers', 'trainer__schedules.id_trainer', '=', 'trainers.id')
+        ->join('branches', 'trainer__schedules.id_branch', '=', 'branches.id')
+        ->where('trainer__schedules.id', $request->id_schedule)
+        ->select(
+            'trainer__schedules.*',
+            'packages.name as package_name',
+            'packages.price as package_price',
+            'packages.duration_days as duration_days',
+            'trainers.name as trainer_name',
+            'trainers.avatar as trainer_avatar',
+            'trainers.experience as trainer_experience',
+            'branches.name as branch_name'
+        )
+        ->first();
+        if (!$schedule) {
+        return response()->json([
+                'status' => false,
+                'message' => 'Không tìm thấy lịch tập.'
+            ], 404);
+        }
+        $start = Carbon::parse($schedule->start_time);
+        $end = Carbon::parse($schedule->end_time);
+        $duration = $start->diffInMinutes($end);
+        $subtotal = $schedule->package_price;
+        $discount = $request->discount ?? 0;
+        $promotionId = $request->id_promotion ?? null;
+        $totalAmount = max(0, $subtotal - $discount);
+
+        // test ma khuyen mai 
+        // if ($request->filled('code')) {
+        //     $promotion = Promotion::where('code',$request->code)
+        //     ->where('status',1)
+        //     ->first();
+
+        //     if (!$promotion) {
+        //         return response()->json([
+        //             'status'=>false,
+        //             'message'=>'Mã giảm giá không hợp lệ'
+        //         ],400);
+        //     }
+
+        //     if (!$promotion) {
+        //         return response()->json([
+        //             'status' => false,
+        //             'message' => 'Không tìm thấy khuyến mãi.'
+        //         ], 404);
+        //     }
+        //     $promotionId = $promotion->id;
+
+        //     if ($promotion->type == 0) {
+
+        //         $discount = ($subtotal * $promotion->value) / 100;
+
+        //         if ($promotion->max_discount) {
+        //             $discount = min($discount, $promotion->max_discount);
+        //         }
+
+        //     } else {
+
+        //         $discount = $promotion->value;
+        //     }
+
+        //     $promotion->increment('used_quantity');
+        // }
+        // $totalAmount = max(0, $subtotal - $discount);
+        $orderCode = 'DH' . now()->format('YmdHis') . rand(100, 999);
+        $order = DonHang::create([
+            'id_member' => $member->id,
+            'id_promotion' => $promotionId,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total_amount' => $totalAmount,
+            'is_thanh_toan' => DonHang::CHUA_THANH_TOAN,
+            'status' => DonHang::DANG_THANH_TOAN,
+            'order_code' => $orderCode,
+            'payment_method' => $request->payment_method,
+        ]);
+
+
+       $orderDetail = OrderDetail::create([
+            'id_don_hang' => $order->id,
+
+            'id_package' => $schedule->id_package,
+            'id_trainer' => $schedule->id_trainer,
+            'id_member' => $member->id,
+            'id_schedule' => $schedule->id,
+            'id_branch' => $schedule->id_branch,
+            'package_name' => $schedule->package_name,
+            'package_price' => $schedule->package_price,
+            'trainer_name' => $schedule->trainer_name,
+            'trainer_avatar' => $schedule->trainer_avatar,
+            'trainer_experience' => $schedule->trainer_experience,
+            'branch_name' => $schedule->branch_name,
+            'schedule_title' => $schedule->title,
+            'schedule_date' => $schedule->date,
+            'start_time' => $schedule->start_time,
+            'end_time' => $schedule->end_time,
+            'duration' => $duration,
+            'room' => $schedule->room,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total_amount' => $totalAmount,
+            'status' => OrderDetail::CHO_DUYET,
+        ]);
+
+        $memberPackage = MemberPackage::where('id_member', $member->id)
+            ->where('status', 1)
+            ->first();
+        MemberPackage::create([
+            'price'           => $schedule->package_price,
+            'start_date'      => now()->toDateString(),
+            'end_date'        => now()->addDays($schedule->duration_days)->toDateString(),
+
+            // Thay bằng giá trị thực của gói nếu có trong bảng packages
+            'total_sessions'  => 16,
+            'used_sessions'   => 0,
+            'pt_sessions'     => 4,
+
+            'status'          => 1, // Đang hoạt động
+
+            'id_trainer'      => $schedule->id_trainer,
+            'id_member'       => $member->id,
+            'id_package'      => $schedule->id_package,
+        ]);
+
+
+
+
+        // $exists = ScheduleMember::where('id_member', $member->id)
+        //     ->where('id_schedule', $schedule->id)
+        //     ->exists();
+
+        // if ($exists) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Bạn đã đăng ký lịch tập này rồi.',
+        //     ], 400);
+        // }
+        ScheduleMember::create([
+            'id_member'   => $member->id,
+            'id_schedule' => $schedule->id,
+            'id_trainer_schedule' => $schedule->id,
+            'id_package'  => $schedule->id_package,
+            'id_order_detail' => $orderDetail->id,
+            'status'      => 0, // Sắp tới
+        ]);
+
+
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tạo đơn hàng thành công.',
+            'data' => $order,
+        ]);
+    }
+    public function checkPromotion(Request $request)
+    {
+        if (!$request->code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Vui lòng nhập mã giảm giá.'
+            ], 400);
+        }
+        if (!$request->subtotal) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Không có giá tiền.'
+            ], 400);
+        }
+        $promotion = Promotion::where('code', $request->code)->first();
+
+        if (!$promotion) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Không tìm thấy khuyến mãi.'
+            ], 404);
+        }
+        if ($promotion->status != 1) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Mã giảm giá đã bị khóa.'
+            ], 400);
+        }
+
+        // Kiểm tra thời gian
+        if ($promotion->start_at && now()->lt($promotion->start_at)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Mã giảm giá chưa bắt đầu.'
+            ], 400);
+        }
+
+
+        if ($promotion->end_at && now()->gt($promotion->end_at)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Mã giảm giá đã hết hạn.'
+            ], 400);
+        }
+
+
+        // Kiểm tra số lượng
+        if ($promotion->quantity > 0 
+            && $promotion->used_quantity >= $promotion->quantity) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Mã giảm giá đã hết lượt sử dụng.'
+            ], 400);
+        }
+
+        $discount = 0;
+        if ($promotion->type == 0) {
+            // giảm %
+            $discount = ($request->subtotal * $promotion->value) / 100;
+            if ($promotion->max_discount) {
+                $discount = min(
+                    $discount,
+                    $promotion->max_discount
+                );
+            }
+        } else {
+            // giảm tiền
+            $discount = $promotion->value;
+
+        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Áp dụng mã giảm giá thành công.',
+            'data' => [
+                'promotion_id' => $promotion->id,
+                'code' => $promotion->code,
+                'discount' => $discount,
+                'total_amount' => max(
+                    0,
+                    $request->subtotal - $discount
+                )
+            ]
+        ]);
+    }
+    public function checkPayment($orderCode)
+    {
+        $order = DonHang::where('order_code', $orderCode)->first();
+
+        if(!$order){
+            return response()->json([
+                'status'=>false,
+                'message'=>'Không tìm thấy đơn hàng'
+            ],404);
+        }
+
+
+        return response()->json([
+            'status'=>true,
+            'is_thanh_toan'=>$order->is_thanh_toan
+        ]);
+    }
+
+
+
+
 
 
 
