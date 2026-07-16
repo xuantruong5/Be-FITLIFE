@@ -20,7 +20,8 @@ return new class extends Migration
             $table->date('date_of_birth')->nullable();
             $table->integer('gender')->default(0)->comment('0: Nam, 1: Nu, 2: Khác');
             $table->string('avatar')->nullable();
-            $table->string('experience')->nullable();
+            $table->integer('experience')->nullable();
+            $table->string('specialization')->nullable()->comment('Ví dụ: Strength Training, HIIT, CrossFit, Dinh Dưỡng ...');
             $table->string('address')->nullable();
             $table->integer('is_active')->default(0); // 1: hoạt động, 0: chưa kích hoạt email
             $table->integer('is_block')->default(0);  // 1: bị khóa, 0: bình thường

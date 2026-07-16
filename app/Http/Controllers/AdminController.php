@@ -7,8 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\Admin\LoginAdminRequest;
+use App\Http\Requests\Admin\RescheduleChangeRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\Admin;
+use App\Models\DonHang;
+use App\Models\Member;
+use App\Models\Trainer;
+use App\Models\TrainerSchedule;
+use App\Models\MemberPackage;
+use App\Models\Package;
+use App\Models\Reschedule;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -71,6 +80,7 @@ class AdminController extends Controller
     }
     public function adminLogout(Request $request)
     {
+        
         $user = Auth::guard('sanctum')->user();
         if ($user && $user->currentAccessToken()) {
             DB::table('personal_access_tokens')
@@ -87,6 +97,552 @@ class AdminController extends Controller
             ]);
         }
     }
+    public function checkTokenAdmin()
+    {
+        $user = Auth::guard('sanctum')->user();
+        if ($user && $user instanceof \App\Models\Admin) {
+            return response()->json([
+                'status' => true,
+                'name'    => $user->name,
+            ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Bạn cần đăng nhập hệ thống!',
+            ]);
+        }
+    }
+
+    public function index()
+    {
+        
+        $tongDoanhThu = DonHang::where('is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->sum('total_amount');
+
+        $tongMember = Member::where('status', Member::ACTIVE)
+            ->count();
+
+        $trainers = Trainer::where('status', Trainer::ACTIVE)
+            ->select(
+                'id',
+                'name',
+                'avatar',
+                'specialization'
+            )
+            ->get();
+            
+        $todaySchedules = TrainerSchedule::join('trainers', 'trainer__schedules.id_trainer', '=', 'trainers.id')
+            ->join('branches', 'trainer__schedules.id_branch', '=', 'branches.id')
+            ->whereDate('trainer__schedules.date', Carbon::today())
+            ->where('trainer__schedules.approval_status', TrainerSchedule::DA_DUYET)
+            ->select(
+                'trainer__schedules.id',
+                'trainer__schedules.title',
+                'trainer__schedules.date',
+                'trainer__schedules.start_time',
+                'trainer__schedules.end_time',
+                'trainer__schedules.room',
+                'trainer__schedules.current_members',
+                'trainer__schedules.max_members',
+                'trainers.name as trainer_name',
+                'branches.name as branch_name'
+            )
+            ->orderBy('trainer__schedules.start_time')
+            ->get();
+
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'total_revenue' => $tongDoanhThu,
+                    'total_members' => $tongMember,
+                    'total_trainers' => $trainers->count(),
+                    'trainers' => $trainers,
+                    'today_schedules' => $todaySchedules,
+                ]
+            ]);
+        }
+
+    public function getMember(Request $request)
+    {
+        $query = DB::table('member_packages')
+            ->join('members', 'member_packages.id_member', '=', 'members.id')
+            ->join('packages', 'member_packages.id_package', '=', 'packages.id')
+            ->select(
+                'member_packages.id',
+                'members.id as member_id',
+                'members.name',
+                'members.phone',
+                'members.avatar',
+                'packages.name as package_name',
+                'member_packages.price',
+                'member_packages.start_date',
+                'member_packages.end_date',
+                'member_packages.total_sessions',
+                'member_packages.used_sessions',
+                'member_packages.pt_sessions',
+                'member_packages.status'
+            );
+
+        // Tìm kiếm theo tên hoặc số điện thoại
+        if ($request->filled('keyword')) {
+            $query->where(function ($query) use ($request) {
+                $query->where('members.name', 'like', '%' . $request->keyword . '%')
+                    ->orWhere('members.phone', 'like', '%' . $request->keyword . '%');
+            });
+        }
+
+        // Lọc trạng thái
+        if ($request->filled('status')) {
+            $query->where('member_packages.status', $request->status);
+        }
+
+        // Lọc gói tập
+        if ($request->filled('package_id')) {
+            $query->where('member_packages.id_package', $request->package_id);
+        }
+
+        $members = $query
+            ->orderBy('member_packages.id', 'desc')
+            ->paginate(10);
+
+        // Thống kê
+        $totalMember = Member::count();
+
+        $activeMember = MemberPackage::where('status', MemberPackage::HOAT_DONG)->count();
+
+        $expireSoon = MemberPackage::where('status', MemberPackage::HOAT_DONG)
+            ->whereBetween('end_date', [now(), now()->addDays(7)])
+            ->count();
+
+        $expired = MemberPackage::whereDate('end_date', '<', now())
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'total_member' => $totalMember,
+                'active_member' => $activeMember,
+                'expire_soon' => $expireSoon,
+                'expired' => $expired,
+            ],
+            'members' => $members,
+        ]);
+    }
+    public function getTrainner()
+    {
+        $today = Carbon::today()->toDateString();
+        $now = Carbon::now()->format('H:i:s');
+
+        // Danh sách HLV
+        $trainers = Trainer::leftJoin(
+                'trainer__schedules',
+                'trainers.id',
+                '=',
+                'trainer__schedules.id_trainer'
+            )
+            ->select(
+                'trainers.id',
+                'trainers.name',
+                'trainers.phone',
+                'trainers.avatar',
+                'trainers.specialization',
+                'trainers.status',
+
+                DB::raw('COALESCE(SUM(trainer__schedules.current_members),0) as total_members'),
+
+                DB::raw("
+                    COUNT(
+                        CASE
+                            WHEN WEEK(trainer__schedules.date,1) = WEEK(CURDATE(),1)
+                            AND YEAR(trainer__schedules.date)=YEAR(CURDATE())
+                            THEN trainer__schedules.id
+                        END
+                    ) as classes_this_week
+                ")
+            )
+            ->groupBy(
+                'trainers.id',
+                'trainers.name',
+                'trainers.phone',
+                'trainers.avatar',
+                'trainers.specialization',
+                'trainers.status'
+            )
+            ->get();
+
+        $data = $trainers->map(function ($trainer) {
+
+            if ($trainer->status == Trainer::BLOCKED) {
+                $trainerStatus = "Nghỉ phép";
+            } else {
+                $trainerStatus = $trainer->classes_this_week > 0
+                    ? "Đang dạy"
+                    : "Sẵn sàng";
+            }
+
+            return [
+                'id' => $trainer->id,
+                'avatar' => $trainer->avatar,
+                'name' => $trainer->name,
+                'phone' => $trainer->phone,
+                'specialization' => $trainer->specialization,
+                'rating' => 5.0,
+                'total_members' => (int)$trainer->total_members,
+                'classes_this_week' => (int)$trainer->classes_this_week,
+                'status' => $trainerStatus,
+            ];
+        });
+
+        // Tổng HLV
+        $totalTrainer = Trainer::where('status', Trainer::ACTIVE)->count();
+
+        // Lớp hôm nay
+        $todayClasses = TrainerSchedule::whereDate('date', $today)
+            ->count();
+
+        // Đang lên lớp
+        $teachingNow = TrainerSchedule::whereDate('date', $today)
+            ->where('start_time', '<=', $now)
+            ->where('end_time', '>=', $now)
+            ->distinct('id_trainer')
+            ->count('id_trainer');
+
+        // Đánh giá trung bình (chưa có bảng review)
+        $averageRating = 5.0;
+
+        return response()->json([
+            'success' => true,
+
+            'summary' => [
+                'total_trainers' => $totalTrainer,
+                'today_classes' => $todayClasses,
+                'average_rating' => $averageRating,
+                'teaching_now' => $teachingNow,
+            ],
+
+            'data' => $data
+        ]);
+    }
+
+    public function getPackage(Request $request)
+    {
+        $query = Package::query();
+
+        // Tìm kiếm theo tên
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Lọc theo thời hạn (1,3,6,12 tháng)
+        if ($request->filled('duration') && $request->duration != 'all') {
+            $durationDays = (int)$request->duration * 30;
+
+            $query->where('duration_days', $durationDays);
+        }
+
+        // Lọc theo loại gói
+        if ($request->filled('pt') && $request->pt != 'all') {
+
+            if ($request->pt == 'with-pt') {
+                $query->where('description', 'like', '%PT%');
+            }
+
+            if ($request->pt == 'no-pt') {
+                $query->where('description', 'not like', '%PT%');
+            }
+        }
+
+        // Lọc trạng thái
+        if ($request->filled('status') && $request->status != 'all') {
+
+            if ($request->status == 'active') {
+                $query->where('status', Package::HOAT_DONG);
+            }
+
+            if ($request->status == 'inactive') {
+                $query->where('status', Package::NGUNG_HOAT_DONG);
+            }
+        }
+
+        $packages = $query
+            ->orderByDesc('is_popular')
+            ->orderBy('price')
+            ->get([
+                'id',
+                'name',
+                'slug',
+                'price',
+                'duration_days',
+                'description',
+                'status',
+                'is_popular',
+                'created_at'
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách gói tập thành công',
+            'data' => $packages
+        ]);
+    }
+   public function getReschedules()
+    {
+        $reschedules = Reschedule::leftJoin('members', 'reschedules.id_member', '=', 'members.id')
+            ->leftJoin('trainers', 'reschedules.id_trainer', '=', 'trainers.id')
+            ->select(
+                'reschedules.id',
+                'reschedules.date',
+                'reschedules.start_time',
+                'reschedules.end_time',
+                'reschedules.reason',
+                'reschedules.status',
+                'reschedules.request_by',
+                'reschedules.trainer_note',
+                'reschedules.approved_at',
+                'reschedules.created_at',
+
+                'members.name as member_name',
+                'members.phone as member_phone',
+                'members.avatar as member_avatar',
+
+                'trainers.name as trainer_name',
+                'trainers.phone as trainer_phone',
+                'trainers.avatar as trainer_avatar'
+            )
+            ->orderBy('reschedules.status')
+            ->orderByDesc('reschedules.created_at')
+            ->get();
+
+        $data = $reschedules->map(function ($item) {
+
+            return [
+                'id' => $item->id,
+
+                'nguoi_gui' => $item->request_by == Reschedule::MEMBER
+                    ? $item->member_name
+                    : $item->trainer_name,
+
+                'avatar' => $item->request_by == Reschedule::MEMBER
+                    ? $item->member_avatar
+                    : $item->trainer_avatar,
+
+                'so_dien_thoai' => $item->request_by == Reschedule::MEMBER
+                    ? $item->member_phone
+                    : $item->trainer_phone,
+
+                'vai_tro' => $item->request_by == Reschedule::MEMBER
+                    ? 'Hội viên'
+                    : 'HLV (PT)',
+
+                'lich_moi' => [
+                    'date' => $item->date,
+                    'start_time' => $item->start_time,
+                    'end_time' => $item->end_time,
+                ],
+
+                'ly_do' => $item->reason,
+
+                'trang_thai' => $item->status,
+
+                'trainer_note' => $item->trainer_note,
+
+                'approved_at' => $item->approved_at
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+    // public function reschedulesChange(RescheduleChangeRequest $request)
+    // {
+    //     $reschedule = Reschedule::find($request->id);
+
+    //     if ($reschedule->status != Reschedule::CHO_DUYET) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Yêu cầu này đã được xử lý.'
+    //         ], 400);
+    //     }
+
+        
+
+    //     $reschedule->status = $request->status;
+    //     $reschedule->approved_at = Carbon::now();
+
+    //     $reschedule->save();
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'message' => $request->status == Reschedule::DA_DUYET
+    //             ? 'Duyệt yêu cầu đổi lịch thành công.'
+    //             : 'Đã từ chối yêu cầu đổi lịch.',
+    //         'data' => $reschedule
+    //     ]);
+    // }
+    public function reschedulesChange(RescheduleChangeRequest $request)
+    {
+        $reschedule = Reschedule::find($request->id);
+
+        if (!$reschedule) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Không tìm thấy yêu cầu.'
+            ], 404);
+        }
+
+        if ($reschedule->status != Reschedule::CHO_DUYET) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Yêu cầu này đã được xử lý.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $reschedule->status = $request->status;
+            $reschedule->approved_at = Carbon::now();
+            $reschedule->save();
+
+            // Nếu duyệt thì cập nhật lịch
+            if ($request->status == Reschedule::DA_DUYET) {
+
+                $schedule = TrainerSchedule::find($reschedule->old_schedule_id);
+
+                if (!$schedule) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Không tìm thấy lịch.'
+                    ], 404);
+                }
+
+                $schedule->date = $reschedule->date;
+                $schedule->start_time = $reschedule->start_time;
+                $schedule->end_time = $reschedule->end_time;
+                $schedule->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => $request->status == Reschedule::DA_DUYET
+                    ? 'Duyệt yêu cầu đổi lịch thành công.'
+                    : 'Đã từ chối yêu cầu đổi lịch.',
+                'data' => $reschedule
+            ]);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function getInvoices(Request $request)
+    {
+        $query = DonHang::join('order_details', 'don_hangs.id', '=', 'order_details.id_don_hang')
+            ->join('members', 'members.id', '=', 'don_hangs.id_member')
+            ->leftJoin('packages', 'packages.id', '=', 'order_details.id_package')
+            ->select(
+                'don_hangs.id',
+                'don_hangs.order_code',
+                'don_hangs.created_at',
+
+                'members.name as member_name',
+
+                'order_details.package_name',
+
+                'don_hangs.total_amount',
+
+                'don_hangs.is_thanh_toan',
+                'don_hangs.status'
+            );
+
+        // Tìm kiếm
+        if ($request->keyword) {
+            $query->where(function ($q) use ($request) {
+                $q->where('don_hangs.order_code', 'like', '%' . $request->keyword . '%')
+                ->orWhere('members.name', 'like', '%' . $request->keyword . '%')
+                ->orWhere('order_details.package_name', 'like', '%' . $request->keyword . '%');
+            });
+        }
+
+        $data = $query->orderByDesc('don_hangs.created_at')
+            ->get()
+            ->map(function ($item) {
+
+                if ($item->status == DonHang::DA_HUY) {
+                    $trangThai = 'Đã hủy';
+                } elseif ($item->is_thanh_toan == DonHang::DA_THANH_TOAN) {
+                    $trangThai = 'Đã thanh toán';
+                } else {
+                    $trangThai = 'Chờ thanh toán';
+                }
+
+                return [
+                    'ma_hoa_don' => $item->order_code,
+                    'hoi_vien' => $item->member_name,
+                    'goi_tap' => $item->package_name,
+                    'ngay_tao' => $item->created_at->format('d/m/Y'),
+                    'so_tien' => $item->total_amount,
+                    'trang_thai' => $trangThai,
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+    public function statisticInvoice()
+    {
+        $daThu = DonHang::where('is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->sum('total_amount');
+
+        $choThu = DonHang::where('is_thanh_toan', DonHang::CHUA_THANH_TOAN)
+            ->sum('total_amount');
+
+        $quaHan = 0; // nếu bắt buộc thanh toán trước thì không có quá hạn
+
+        $tong = DonHang::count();
+
+        $tiLe = $tong > 0
+            ? round(DonHang::where('is_thanh_toan', DonHang::DA_THANH_TOAN)->count() * 100 / $tong)
+            : 0;
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'da_thu' => $daThu,
+                'cho_thu' => $choThu,
+                'qua_han' => $quaHan,
+                'ti_le_thu_dung_han' => $tiLe
+            ]
+        ]);
+    }
+
+
+
+
+
+
+
+
+
+
+   
+
+
 
 
 

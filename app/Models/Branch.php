@@ -17,14 +17,5 @@ class Branch extends Model
         'phone',
     ];
 
-    // Relations
-    public function trainers()
-    {
-        return $this->hasMany(Trainer::class, 'id_branch');
-    }
-
-    public function schedules()
-    {
-        return $this->hasMany(TrainerSchedule::class, 'id_branch');
-    }
+   
 }

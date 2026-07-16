@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TrainerSchedule\RejectTrainerScheduleRequest;
+use App\Http\Requests\TrainerSchedule\StoreTrainerScheduleRequest;
+use App\Http\Requests\TrainerSchedule\UpdateTrainerScheduleRequest;
+use App\Http\Requests\Trainer\ChangeScheduleRequest;
+use App\Http\Requests\Trainer\TrainerScheduleRequest;
 use App\Models\TrainerSchedule;
+use App\Models\ScheduleMember;
+use App\Models\Reschedule;
+use App\Models\DonHang;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class TrainerScheduleController extends Controller
 {
-    /**
-     * GET /api/trainer/schedules
-     * HLV xem lịch của mình
-     */
     public function index(Request $request)
     {
         $trainer   = Auth::guard('sanctum')->user();
@@ -27,10 +32,6 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/admin/schedules
-     * Admin xem tất cả lịch
-     */
     public function indexAdmin(Request $request)
     {
         $schedules = TrainerSchedule::with(['trainer', 'branch'])
@@ -44,24 +45,9 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/trainer/schedules
-     * HLV tạo lịch mới (chờ admin duyệt)
-     */
-    public function store(Request $request)
+    public function store(StoreTrainerScheduleRequest $request)
     {
         $trainer = Auth::guard('sanctum')->user();
-
-        $request->validate([
-            'title'       => 'required|string|max:255',
-            'date'        => 'required|date',
-            'start_time'  => 'required',
-            'end_time'    => 'required|after:start_time',
-            'room'        => 'required|string|max:100',
-            'max_members' => 'nullable|integer|min:1',
-            'id_branch'   => 'required|exists:branches,id',
-            'note'        => 'nullable|string',
-        ]);
 
         $schedule = TrainerSchedule::create([
             'title'           => $request->title,
@@ -84,10 +70,6 @@ class TrainerScheduleController extends Controller
         ], 201);
     }
 
-    /**
-     * GET /api/trainer/schedules/{id}
-     * Xem chi tiết lịch tập
-     */
     public function show(Request $request)
     {
         $id       = $request->route('id');
@@ -107,11 +89,7 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * PUT /api/trainer/schedules/{id}
-     * HLV cập nhật lịch (chỉ khi chưa duyệt)
-     */
-    public function update(Request $request)
+    public function update(UpdateTrainerScheduleRequest $request)
     {
         $id      = $request->route('id');
         $trainer = Auth::guard('sanctum')->user();
@@ -132,16 +110,6 @@ class TrainerScheduleController extends Controller
             ], 400);
         }
 
-        $request->validate([
-            'title'       => 'sometimes|required|string|max:255',
-            'date'        => 'sometimes|required|date',
-            'start_time'  => 'sometimes|required',
-            'end_time'    => 'sometimes|required',
-            'room'        => 'sometimes|required|string|max:100',
-            'max_members' => 'nullable|integer|min:1',
-            'note'        => 'nullable|string',
-        ]);
-
         $schedule->update($request->only('title', 'date', 'start_time', 'end_time', 'room', 'max_members', 'note'));
         $schedule->approval_status = TrainerSchedule::CHO_DUYET;
         $schedule->save();
@@ -153,17 +121,16 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/schedules/{id}/approve
-     * Admin duyệt lịch
-     */
     public function approve(Request $request)
     {
         $id       = $request->route('id');
         $schedule = TrainerSchedule::find($id);
 
         if (!$schedule) {
-            return response()->json(['status' => false, 'message' => 'Lịch không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Lịch không tồn tại.',
+            ], 404);
         }
 
         $schedule->update([
@@ -178,19 +145,16 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * POST /api/admin/schedules/{id}/reject
-     * Admin từ chối lịch
-     */
-    public function reject(Request $request)
+    public function reject(RejectTrainerScheduleRequest $request)
     {
-        $request->validate(['admin_note' => 'required|string']);
-
         $id       = $request->route('id');
         $schedule = TrainerSchedule::find($id);
 
         if (!$schedule) {
-            return response()->json(['status' => false, 'message' => 'Lịch không tồn tại.'], 404);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Lịch không tồn tại.',
+            ], 404);
         }
 
         $schedule->update([
@@ -205,10 +169,6 @@ class TrainerScheduleController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/trainer/schedules/{id}
-     * HLV hủy lịch
-     */
     public function destroy(Request $request)
     {
         $id      = $request->route('id');
@@ -230,4 +190,252 @@ class TrainerScheduleController extends Controller
             'message' => 'Đã hủy lịch tập.',
         ]);
     }
+    public function StoreSchedule(TrainerScheduleRequest $request)
+    {
+        $trainer = Auth::guard('sanctum')->user();
+
+        $schedule = TrainerSchedule::create([
+            'title'             => $request->title,
+            'date'              => $request->date,
+            'start_time'        => $request->start_time,
+            'end_time'          => $request->end_time,
+            'room'              => $request->room,
+            'id_package'        => $request->id_package,
+            'max_members'       => $request->max_members,
+            'current_members'   => 0,
+            'approval_status'   => TrainerSchedule::CHUA_DUYET,
+            'status'            => TrainerSchedule::SAP_DIEN_RA,
+            'id_branch'         => $request->id_branch,
+            'id_trainer'        => $trainer->id,
+            'admin_note'        => null,
+            'note'              => $request->note,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đăng ký lịch thành công, vui lòng chờ quản lý duyệt.',
+            'data' => $schedule
+        ], 201);
+    }
+
+    public function getSchedules(Request $request)
+    {
+        $trainer = Auth::guard('sanctum')->user();
+
+        if (!$trainer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy trainer.'
+            ], 401);
+        }
+
+        $query = TrainerSchedule::with([
+            'branch:id,name',
+            'scheduleMembers' => function ($q) {
+        $q->whereHas('orderDetail.donHang', function ($order) {
+            $order->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+        });
+    },
+
+            'scheduleMembers.attendance',
+        ])
+        ->where('id_trainer', $trainer->id)
+        ->where('approval_status', TrainerSchedule::DA_DUYET);
+
+        // Lọc theo ngày
+        if ($request->filled('date')) {
+
+            $query->whereDate('date', $request->date);
+
+        }
+        // Lọc theo tháng + năm
+        elseif ($request->filled('month') && $request->filled('year')) {
+
+            $query->whereMonth('date', $request->month)
+                ->whereYear('date', $request->year);
+
+        }
+        // Lọc theo năm
+        elseif ($request->filled('year')) {
+
+            $query->whereYear('date', $request->year);
+
+        }
+        // Không truyền gì thì lấy hôm nay
+        else {
+
+            $query->whereDate('date', today());
+
+        }
+
+        $schedules = $query->orderBy('date')
+                        ->orderBy('start_time')
+                        ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy lịch thành công.',
+            'data' => $schedules
+        ]);
+    }
+    public function changeSchedule(ChangeScheduleRequest $request)
+    {
+        $trainer = Auth::guard('sanctum')->user();
+
+        if (!$trainer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vui lòng đăng nhập.'
+            ], 401);
+        }
+
+        $schedule = TrainerSchedule::find($request->old_schedule_id);
+
+        if (!$schedule) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy lịch.'
+            ]);
+        }
+
+        if ($schedule->id_trainer != $trainer->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền đổi lịch này.'
+            ],403);
+        }
+
+        $reschedule = Reschedule::create([
+            'old_schedule_id' => $schedule->id,
+            'new_schedule_id' => null,
+            'date'            => $request->date,
+            'start_time'      => $request->start_time,
+            'end_time'        => $request->end_time,
+            'reason'          => $request->reason,
+            'status'          => Reschedule::CHO_DUYET,
+            'request_by'      => Reschedule::TRAINNER,
+            'id_member'       => null,
+            'id_trainer'      => $trainer->id,
+            'trainer_note'    => null,
+            'approved_at'     => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã gửi yêu cầu đổi lịch.',
+            'data' => $reschedule
+        ]);
+    }
+    
+
+    public function getTodaySchedules(Request $request)
+    {
+        
+        $trainer = Auth::guard('sanctum')->user();
+
+        if (!$trainer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Vui lòng đăng nhập'
+            ], 401);
+        }
+
+        $query = TrainerSchedule::with([
+            'scheduleMembers' => function ($q) {
+                $q->whereHas('orderDetail.donHang', function ($order) {
+                    $order->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+                });
+            },
+
+            'scheduleMembers.member',
+            'scheduleMembers.attendance',
+            'package',
+            'branch',
+        ])
+        ->where('id_trainer', $trainer->id)
+        ->whereHas('scheduleMembers.orderDetail.donHang', function ($q) {
+                $q->where('is_thanh_toan', DonHang::DA_THANH_TOAN);
+            });
+
+
+        // Lọc theo ngày
+        if ($request->filled('date')) {
+            $query->whereDate('date', $request->date);
+        }
+        // Lọc theo tháng + năm
+        elseif ($request->filled('month') && $request->filled('year')) {
+            $query->whereMonth('date', $request->month)
+                ->whereYear('date', $request->year);
+        }
+        // Lọc theo năm
+        elseif ($request->filled('year')) {
+            $query->whereYear('date', $request->year);
+        }
+        // Mặc định là hôm nay
+        else {
+            $query->whereDate('date', today());
+        }
+
+        $data = $query->orderBy('date')
+                    ->orderBy('start_time')
+                    ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    public function getScheduleMembers(Request $request)
+    {
+        $query = ScheduleMember::query()
+            ->join('members', 'schedule_members.id_member', '=', 'members.id')
+            ->join('packages', 'schedule_members.id_package', '=', 'packages.id')
+            ->join('trainer__schedules', 'schedule_members.id_trainer_schedule', '=', 'trainer__schedules.id')
+            ->join('order_details', 'schedule_members.id_order_detail', '=', 'order_details.id')
+            ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')
+            ->leftJoin('attendances', 'schedule_members.id', '=', 'attendances.id_schedule_member')
+            >where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->select(
+                'schedule_members.*',
+                'members.name as member_name',
+                'packages.name as package_name',
+                'trainer__schedules.date as schedule_date',
+                'trainer__schedules.start_time as schedule_start',
+                'trainer__schedules.end_time as schedule_end',
+                DB::raw("DATE_FORMAT(trainer__schedules.date, '%d/%m/%Y') as schedule_date_format"),
+                'trainer__schedules.start_time as trainer_start',
+                'trainer__schedules.end_time as trainer_end',
+                'attendances.status as attendance_status'
+            );
+
+             // Lọc theo ngày
+            if ($request->filled('date')) {
+                $query->whereDate('trainer__schedules.date', $request->date);
+            }
+
+            $data = $query->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
 }

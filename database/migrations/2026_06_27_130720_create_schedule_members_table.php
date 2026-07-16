@@ -13,10 +13,17 @@ return new class extends Migration
     {
         Schema::create('schedule_members', function (Blueprint $table) {
             $table->id();
+            $table->timestamp('checked_in_at')->nullable();
+            $table->text('trainer_note')->nullable();
+            $table->text('cancel_reason')->nullable();
+            $table->integer('status')->default(0)->comment('0: Sắp tới, 1: Check-in, 2: Hoàn thành, 3: Đã hủy');
             $table->integer('id_schedule');
             $table->integer('id_member');
             $table->string('id_package');
-            $table->integer('id_trainer');
+            $table->integer('id_trainer_schedule');
+            $table->integer('id_order_detail');
+            // $table->integer('id_attendance');
+
 
             $table->timestamps();
         });

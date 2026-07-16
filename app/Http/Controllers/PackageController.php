@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+// use App\Http\Requests\Package\StorePackageRequest;
+use App\Http\Requests\Package\UpdatePackageRequest;
+use App\Http\Requests\Admin\StorePackageRequest;
 use App\Models\Package;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class PackageController extends Controller
 {
-    /**
-     * GET /api/packages
-     */
     public function index(Request $request)
     {
         $packages = Package::where('status', Package::HOAT_DONG)->get();
@@ -32,18 +33,8 @@ class PackageController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StorePackageRequest $request)
     {
-        $request->validate([
-            'name'          => 'required|string|max:255',
-            'slug'          => 'required|string|unique:packages,slug',
-            'price'         => 'required|integer|min:0',
-            'duration_days' => 'required|integer|min:1',
-            'description'   => 'nullable|string',
-            'status'        => 'nullable|in:0,1',
-            'is_popular'    => 'nullable|boolean',
-        ]);
-
         $package = Package::create($request->only(
             'name', 'slug', 'price', 'duration_days', 'description', 'status', 'is_popular'
         ));
@@ -74,7 +65,7 @@ class PackageController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(UpdatePackageRequest $request)
     {
         $id      = $request->route('id');
         $package = Package::find($id);
@@ -85,16 +76,6 @@ class PackageController extends Controller
                 'message' => 'Gói tập không tồn tại.',
             ], 404);
         }
-
-        $request->validate([
-            'name'          => 'sometimes|required|string|max:255',
-            'slug'          => 'sometimes|required|string|unique:packages,slug,' . $id,
-            'price'         => 'sometimes|required|integer|min:0',
-            'duration_days' => 'sometimes|required|integer|min:1',
-            'description'   => 'nullable|string',
-            'status'        => 'nullable|in:0,1',
-            'is_popular'    => 'nullable|boolean',
-        ]);
 
         $package->update($request->only(
             'name', 'slug', 'price', 'duration_days', 'description', 'status', 'is_popular'
@@ -107,9 +88,6 @@ class PackageController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/admin/packages/{id}
-     */
     public function destroy(Request $request)
     {
         $id      = $request->route('id');
@@ -129,4 +107,39 @@ class PackageController extends Controller
             'message' => 'Đã dừng gói tập thành công.',
         ]);
     }
+
+    public function storePackage(StorePackageRequest $request)
+    {
+        
+        $durationDays = match ((int) $request->duration_months) {
+            1 => 30,
+            3 => 90,
+            6 => 180,
+            12 => 365,
+            default => 30,
+        };
+
+        $package = Package::create([
+            'name' => $request->name,
+            'slug' => $request->slug ?? Str::slug($request->name),
+            'price' => $request->price,
+            'duration_days' => $durationDays,
+            'description' => $request->description,
+            'status' => $request->status,
+            'is_popular' => $request->is_popular ?? 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo gói tập thành công.',
+            'data' => $package
+        ], 201);
+    }
+
+
+
+
+
+
+
 }

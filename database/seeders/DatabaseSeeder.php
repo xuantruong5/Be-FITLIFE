@@ -23,6 +23,15 @@ class DatabaseSeeder extends Seeder
             TrainerScheduleSeeder::class,
             MemberSeeder::class,
             PackageSeeder::class,
+            // MemberPackageSeeder::class,
+            TrainerNoteSeeder::class,
+            ScheduleChangeSeeder::class,
+            // ScheduleMemberSeeder::class,
+            PackageTrainerSeeder::class,
+            DonHangSeeder::class,
+            PromotionSeeder::class,
+            OrderDetailSeeder::class,
+            AdminSeeder::class,
        ]);
     }
 }

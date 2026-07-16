@@ -18,13 +18,15 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');
             $table->string('room');
+            $table->unsignedBigInteger('id_package');
             $table->string('max_members')->nullable();
+            $table->unsignedInteger('current_members')->default(0);
             $table->integer('approval_status')->default(0)->comment('0: Chờ duyệt, 1: Đã duyệt, 2: Từ chối');
             $table->integer('status')->default(0)->comment('0: Sắp diễn ra, 1: Đang diễn ra, 2: Đã hoàn thành, 3: Đã hủy');
             $table->integer('id_branch');
             $table->integer('id_trainer');
             $table->string('admin_note')->nullable();
-            $table->string('note')->nullable();
+            $table->string('note')->nullable();  
             $table->timestamps();
         });
     }
