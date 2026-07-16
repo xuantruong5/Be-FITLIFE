@@ -169,7 +169,6 @@ class MembersController extends Controller
 
     public function login(Request $request)
     {
-         dd($request->all());
         $check = Auth::guard('member')->attempt([
             'email'     => $request->email,
             'password'  => $request->password

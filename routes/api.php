@@ -25,7 +25,7 @@ Route::post('/register',      [MembersController::class, 'register']);
 Route::post('/trainer/login', [TrainerController::class, 'login']);
 
 // Auth - Admin
-Route::post('/admin/login',   [AdminController::class, 'adminLogin']);
+// Route::post('/admin/login',   [AdminController::class, 'adminLogin']);
 
 // Public - Packages (hội viên xem gói tập)
 Route::get('/packages',       [PackageController::class, 'index']);
@@ -194,7 +194,7 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 // ============================================================
 // ADMIN ROUTES (Cần đăng nhập với token admin)
 // ============================================================
-    Route::post('/login',  [AdminController::class, 'adminLogin']);
+    Route::post('admin/login',  [AdminController::class, 'adminLogin']);
     Route::group(['prefix' => 'admin','middleware' => 'AdminMiddleware'], function () {
             Route::post('/logout', [AdminController::class, 'adminLogout']);
             Route::get('/check-token', [AdminController::class, 'checkTokenAdmin']);
@@ -206,6 +206,13 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 
 
             Route::get('/reschedule', [AdminController::class, 'getReschedules']);
+
+            Route::post('change/reschedule', [AdminController::class, 'reschedulesChange']);
+
+            Route::get('/invoices', [AdminController::class, 'getInvoices']);
+            Route::get('sum/invoices', [AdminController::class, 'statisticInvoice']);
+
+
           
 
 

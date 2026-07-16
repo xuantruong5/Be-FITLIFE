@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\Admin\LoginAdminRequest;
+use App\Http\Requests\Admin\RescheduleChangeRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\Admin;
 use App\Models\DonHang;
@@ -455,6 +456,190 @@ class AdminController extends Controller
             'data' => $data
         ]);
     }
+    // public function reschedulesChange(RescheduleChangeRequest $request)
+    // {
+    //     $reschedule = Reschedule::find($request->id);
+
+    //     if ($reschedule->status != Reschedule::CHO_DUYET) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Yêu cầu này đã được xử lý.'
+    //         ], 400);
+    //     }
+
+        
+
+    //     $reschedule->status = $request->status;
+    //     $reschedule->approved_at = Carbon::now();
+
+    //     $reschedule->save();
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'message' => $request->status == Reschedule::DA_DUYET
+    //             ? 'Duyệt yêu cầu đổi lịch thành công.'
+    //             : 'Đã từ chối yêu cầu đổi lịch.',
+    //         'data' => $reschedule
+    //     ]);
+    // }
+    public function reschedulesChange(RescheduleChangeRequest $request)
+    {
+        $reschedule = Reschedule::find($request->id);
+
+        if (!$reschedule) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Không tìm thấy yêu cầu.'
+            ], 404);
+        }
+
+        if ($reschedule->status != Reschedule::CHO_DUYET) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Yêu cầu này đã được xử lý.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $reschedule->status = $request->status;
+            $reschedule->approved_at = Carbon::now();
+            $reschedule->save();
+
+            // Nếu duyệt thì cập nhật lịch
+            if ($request->status == Reschedule::DA_DUYET) {
+
+                $schedule = TrainerSchedule::find($reschedule->old_schedule_id);
+
+                if (!$schedule) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Không tìm thấy lịch.'
+                    ], 404);
+                }
+
+                $schedule->date = $reschedule->date;
+                $schedule->start_time = $reschedule->start_time;
+                $schedule->end_time = $reschedule->end_time;
+                $schedule->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => $request->status == Reschedule::DA_DUYET
+                    ? 'Duyệt yêu cầu đổi lịch thành công.'
+                    : 'Đã từ chối yêu cầu đổi lịch.',
+                'data' => $reschedule
+            ]);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function getInvoices(Request $request)
+    {
+        $query = DonHang::join('order_details', 'don_hangs.id', '=', 'order_details.id_don_hang')
+            ->join('members', 'members.id', '=', 'don_hangs.id_member')
+            ->leftJoin('packages', 'packages.id', '=', 'order_details.id_package')
+            ->select(
+                'don_hangs.id',
+                'don_hangs.order_code',
+                'don_hangs.created_at',
+
+                'members.name as member_name',
+
+                'order_details.package_name',
+
+                'don_hangs.total_amount',
+
+                'don_hangs.is_thanh_toan',
+                'don_hangs.status'
+            );
+
+        // Tìm kiếm
+        if ($request->keyword) {
+            $query->where(function ($q) use ($request) {
+                $q->where('don_hangs.order_code', 'like', '%' . $request->keyword . '%')
+                ->orWhere('members.name', 'like', '%' . $request->keyword . '%')
+                ->orWhere('order_details.package_name', 'like', '%' . $request->keyword . '%');
+            });
+        }
+
+        $data = $query->orderByDesc('don_hangs.created_at')
+            ->get()
+            ->map(function ($item) {
+
+                if ($item->status == DonHang::DA_HUY) {
+                    $trangThai = 'Đã hủy';
+                } elseif ($item->is_thanh_toan == DonHang::DA_THANH_TOAN) {
+                    $trangThai = 'Đã thanh toán';
+                } else {
+                    $trangThai = 'Chờ thanh toán';
+                }
+
+                return [
+                    'ma_hoa_don' => $item->order_code,
+                    'hoi_vien' => $item->member_name,
+                    'goi_tap' => $item->package_name,
+                    'ngay_tao' => $item->created_at->format('d/m/Y'),
+                    'so_tien' => $item->total_amount,
+                    'trang_thai' => $trangThai,
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+    public function statisticInvoice()
+    {
+        $daThu = DonHang::where('is_thanh_toan', DonHang::DA_THANH_TOAN)
+            ->sum('total_amount');
+
+        $choThu = DonHang::where('is_thanh_toan', DonHang::CHUA_THANH_TOAN)
+            ->sum('total_amount');
+
+        $quaHan = 0; // nếu bắt buộc thanh toán trước thì không có quá hạn
+
+        $tong = DonHang::count();
+
+        $tiLe = $tong > 0
+            ? round(DonHang::where('is_thanh_toan', DonHang::DA_THANH_TOAN)->count() * 100 / $tong)
+            : 0;
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'da_thu' => $daThu,
+                'cho_thu' => $choThu,
+                'qua_han' => $quaHan,
+                'ti_le_thu_dung_han' => $tiLe
+            ]
+        ]);
+    }
+
+
+
+
+
+
+
+
+
+
    
 
 
