@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\MasterMail;
 use Carbon\Carbon;
 use App\Models\Attendance;
+use Illuminate\Support\Facades\Hash;
 
 
 
@@ -163,12 +164,13 @@ class MembersController extends Controller
             'message' => 'Đăng ký lịch tập thành công.',
             'data' => $register
         ], 201);
-       
+
     }
 
 
     public function login(Request $request)
     {
+    //    dd($request->all());
         $check = Auth::guard('member')->attempt([
             'email'     => $request->email,
             'password'  => $request->password
@@ -299,7 +301,7 @@ class MembersController extends Controller
                         $join->on('member_packages.id_member', '=', 'order_details.id_member')
                             ->on('member_packages.id_package', '=', 'order_details.id_package');
                     })
-        ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')         
+        ->join('don_hangs', 'order_details.id_don_hang', '=', 'don_hangs.id')
         ->where('member_packages.id_member', $member->id)
         ->where('don_hangs.is_thanh_toan', DonHang::DA_THANH_TOAN)
         ->select(
@@ -322,9 +324,9 @@ class MembersController extends Controller
             'message' => 'Lấy danh sách gói tập thành công.',
             'data' => $data,
         ], 200);
-        
+
     }
-    
+
 
 
     public function getTrainer()
@@ -429,7 +431,7 @@ class MembersController extends Controller
         ], 200);
     }
 
-    
+
 
     public function getScheduleDetail($id)
     {
@@ -554,7 +556,7 @@ class MembersController extends Controller
         $promotionId = $request->id_promotion ?? null;
         $totalAmount = max(0, $subtotal - $discount);
 
-      
+
         $orderCode = 'DH' . now()->format('YmdHis') . rand(100, 999);
         $order = DonHang::create([
             'id_member' => $member->id,
@@ -710,7 +712,7 @@ class MembersController extends Controller
         ]);
     }
 
-    
+
     public function checkPromotion(Request $request)
     {
         if (!$request->code) {
@@ -758,7 +760,7 @@ class MembersController extends Controller
 
 
         // Kiểm tra số lượng
-        if ($promotion->quantity > 0 
+        if ($promotion->quantity > 0
             && $promotion->used_quantity >= $promotion->quantity) {
 
             return response()->json([
@@ -824,7 +826,7 @@ class MembersController extends Controller
 
 
 
-    
+
 
 
 
