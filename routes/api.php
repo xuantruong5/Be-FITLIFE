@@ -11,6 +11,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\RescheduleController;
 use App\Http\Controllers\TrainerNoteController;
 use App\Http\Controllers\TrainerSalaryController;
+use Illuminate\Support\Facades\Route;
 
 // ============================================================
 // PUBLIC ROUTES (Không cần đăng nhập)
@@ -59,7 +60,7 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
 
 
-    
+
 
 
 
@@ -67,10 +68,10 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
     // Ghi chú sức khỏe từ HLV
     Route::get('/my-notes',       [TrainerNoteController::class, 'myNotes']);
 
-    // xem gói hiện tại 
+    // xem gói hiện tại
     Route::get('/my-package',       [MembersController::class, 'myPackage']);
 
-    // xem ghi trú từ hlv 
+    // xem ghi trú từ hlv
     Route::get('/my-trainer-note',  [TrainerNoteController::class, 'myTrainerNote']);
 
     Route::get('/my-schedule',  [ScheduleMemberController::class, 'mySchedule']);
@@ -89,20 +90,20 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
     Route::get('/packages', [MembersController::class, 'getPackage']); // lấy gói
 
-    Route::get('/schedule/{id}', [MembersController::class, 'getScheduleDetail']); // lấy chi tiết đặt lịch trước khi thanh toán 
+    Route::get('/schedule/{id}', [MembersController::class, 'getScheduleDetail']); // lấy chi tiết đặt lịch trước khi thanh toán
 
     Route::post('/create-order', [MembersController::class, 'createOrder']);
-    
+
     Route::post('/check-promotion', [MembersController::class, 'checkPromotion']);
 
     Route::get('/orders/check-payment/{orderCode}', [MembersController::class, 'checkPayment']);
 
-    // Huy Lich 
+    // Huy Lich
     Route::post('/cancel-schedule', [ScheduleMemberController::class, 'cancelSchedule']);
 
     Route::post('/change-schedule', [ScheduleMemberController::class, 'changeSchedule']);
 
-    Route::get('/get-schedule/{id}', [ScheduleMemberController::class, 'getChangeSchedule']); // lấy giờ ngày tháng để đổi lịch 
+    Route::get('/get-schedule/{id}', [ScheduleMemberController::class, 'getChangeSchedule']); // lấy giờ ngày tháng để đổi lịch
 
 
 
@@ -111,7 +112,7 @@ Route::prefix('member')->middleware('memberMiddleware')->group(function () {
 
 
 
-    
+
 
 
 
@@ -166,14 +167,14 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
     Route::get('/schedules',            [TrainerScheduleController::class, 'getSchedules']);
     Route::post('/change-schedule',     [TrainerScheduleController::class, 'changeSchedule']);
 
-    // lấy học viên 
+    // lấy học viên
     Route::get('/member-packages', [TrainerController::class, 'memberPackages']);
 
     Route::get('today-schedules',       [TrainerScheduleController::class, 'getTodaySchedules']);
 
     Route::post('change/attendances',   [AttendanceController::class, 'attendances']);
 
-    // lấy lịch dạy từng học viên 
+    // lấy lịch dạy từng học viên
     Route::get('member-schedules',       [TrainerScheduleController::class, 'getScheduleMembers']);
 
 
@@ -181,9 +182,9 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
 
 
 
-    
 
-    
+
+
 
 
 
@@ -213,7 +214,7 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
             Route::get('sum/invoices', [AdminController::class, 'statisticInvoice']);
 
 
-          
+
 
 
 
@@ -246,5 +247,5 @@ Route::prefix('trainer')->middleware('trainerMiddleware')->group(function () {
             Route::get('/salaries/{id}',   [TrainerSalaryController::class, 'show']);
             Route::put('/salaries/{id}',   [TrainerSalaryController::class, 'update']);
             Route::post('/salaries/{id}/pay', [TrainerSalaryController::class, 'pay']);
-        
+
     });
