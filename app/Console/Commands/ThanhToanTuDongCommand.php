@@ -20,6 +20,7 @@ class ThanhToanTuDongCommand extends Command
     /**
      * The console command description.
      *
+     *
      * @var string
      */
     protected $description = 'Thanh toán tự động';
@@ -32,7 +33,7 @@ class ThanhToanTuDongCommand extends Command
         while(true){
             printf("lấy danh sách mới nhất tại thời điểm : " . now() . "\n");
             $data = $this->getListMB();
-           
+
             $list_don_hang = DonHang::where('is_thanh_toan', DonHang::CHUA_THANH_TOAN)
                                                     ->where("payment_method", DonHang::LOAI_THANH_TOAN_ONLINE)
                                                     ->select('id', 'order_code', 'total_amount')
@@ -63,7 +64,7 @@ class ThanhToanTuDongCommand extends Command
         $response = $client->request('POST', 'https://api-mb.midstack.io.vn/api/transactions', [
              'json' => [
                 "USERNAME"  => "0813559551",
-                "PASSWORD"  => "Truong0812@@@@",
+                "PASSWORD"  => "",
                 "DAY_BEGIN" => Carbon::now()->format('d/m/Y'),
                 "DAY_END"   => Carbon::now()->format('d/m/Y'),
                 "NUMBER_MB" => "0813559551"
